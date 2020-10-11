@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "commonjs",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "."
+  },
+  "include": ["*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,11 @@
+yarn.lock
+
+node_modules
+
+.*.md
+
+*.gif
+.vscode
+
+test.ts
+test.js

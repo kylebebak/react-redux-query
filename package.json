@@ -1,0 +1,49 @@
+{
+  "name": "react-redux-query",
+  "version": "1.0.0",
+  "author": "Kyle Bebak <kylebebak@gmail.com>",
+  "description": "Functions and React hooks for SWR-style data fetching, persistence and automatic updates, backed by Redux",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "keywords": [
+    "fetch",
+    "request",
+    "query",
+    "redux",
+    "SWR"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kylebebak/react-redux-query"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "yarn test",
+    "test": "tsc && prettier --check *.ts && ava -v",
+    "prettier-check": "prettier --check *.ts",
+    "prettier": "prettier --write *.ts"
+  },
+  "dependencies": {},
+  "husky": {
+    "hooks": {
+      "pre-push": "yarn prettier-check"
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^16.9.52",
+    "@types/react-dom": "^16.9.8",
+    "@types/react-redux": "^7.1.9",
+    "ava": "^3.13.0",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.11.0",
+    "husky": "^4.3.0",
+    "node-fetch": "^2.6.1",
+    "prettier": "^2.1.2",
+    "typescript": "^4.0.3"
+  },
+  "peerDependencies": {
+    "react": "^16.13.1",
+    "react-redux": "^7.2.1",
+    "redux": "^4.0.5"
+  }
+}
