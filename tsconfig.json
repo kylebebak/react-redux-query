@@ -2,12 +2,13 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "commonjs",
+    "esModuleInterop": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "esModuleInterop": true,
     "strict": true,
-    "outDir": "."
+    "outDir": ".",
+    "jsx": "preserve"
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "*.tsx"],
   "exclude": ["node_modules"]
 }

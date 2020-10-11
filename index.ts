@@ -20,7 +20,7 @@ export interface RootState {
  *
  * @returns Raw response
  */
-export async function reduxQuery<T>(
+export async function reduxQuery<T extends {}>(
   query: () => Promise<RawResponse<T>>,
   key: string,
   dispatch: Dispatch,
@@ -44,7 +44,7 @@ export async function reduxQuery<T>(
  *
  * @returns Query response
  */
-export function useReduxQuery<T>(
+export function useReduxQuery<T extends {}>(
   query: (() => Promise<RawResponse<T>>) | undefined,
   key: string,
   options?: { noRefetch?: boolean },

@@ -9,3 +9,7 @@ node_modules
 
 test.ts
 test.js
+
+*.tsx
+*.jsx
+*.html
