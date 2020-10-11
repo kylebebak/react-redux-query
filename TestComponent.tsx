@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import ReactDOM from 'react-dom'
 
-import { reduxQuery } from './index'
+import { RawResponse, reduxQuery, useReduxQuery } from './index'
 
 type GetResponse = { origin: string; url: string; headers: { [key: string]: string } }
 
@@ -11,18 +11,29 @@ export interface Props {}
 function TestComponent({}: Props) {
   const dispatch = useDispatch()
 
+  // https://stackoverflow.com/questions/50870423/discriminated-union-of-generic-type
+
   useEffect(() => {
     reduxQuery(
       async () => {
         const res = await fetch('https://httpbin.org/get')
-        return (await res.json()) as GetResponse
+        const data: GetResponse = await res.json()
+        return { data, persist: true }
       },
       'get',
       dispatch,
     ).then((res) => {
-      console.log(res?.origin)
+      if (res.persist) console.log(res.data.origin)
     })
   }, [])
+
+  const res = useReduxQuery(async () => {
+    const res = await fetch('https://httpbin.org/get')
+    const data: GetResponse = await res.json()
+    return { data, persist: true }
+  }, 'otherGet')
+
+  console.log(res?.data.origin)
 
   return null
 }

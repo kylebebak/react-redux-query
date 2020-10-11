@@ -4,11 +4,14 @@ import { Dispatch } from 'redux'
 
 import { query as queryAction } from './actions'
 
-export type RawResponse<T extends {}> = T | undefined
-export type ReduxResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
+type Persist = { persist: true }
+type NoPersist = { persist: false }
+
+export type RawResponse<T extends Persist, ET extends NoPersist = NoPersist> = T | ET
+export type ReduxResponse<T extends Persist> = (T & { receivedMs: number }) | undefined
 
 export interface RootState {
-  query: { [key: string]: ReduxResponse }
+  query: { [key: string]: ReduxResponse<Persist> }
 }
 
 /**
@@ -20,13 +23,13 @@ export interface RootState {
  *
  * @returns Raw response
  */
-export async function reduxQuery<T extends {}>(
-  query: () => Promise<RawResponse<T>>,
+export async function reduxQuery<T extends Persist, ET extends NoPersist>(
+  query: () => Promise<RawResponse<T, ET>>,
   key: string,
   dispatch: Dispatch,
-): Promise<RawResponse<T>> {
+): Promise<RawResponse<T, ET>> {
   const response = await query()
-  if (response !== undefined) dispatch(queryAction({ response, key }))
+  if (response.persist) dispatch(queryAction({ response, key }))
   return response
 }
 
@@ -44,16 +47,16 @@ export async function reduxQuery<T extends {}>(
  *
  * @returns Query response
  */
-export function useReduxQuery<T extends {}>(
-  query: (() => Promise<RawResponse<T>>) | undefined,
+export function useReduxQuery<T extends Persist, ET extends NoPersist>(
+  query: () => Promise<RawResponse<T, ET>>,
   key: string,
   options?: { noRefetch?: boolean },
 ) {
   const dispatch = useDispatch()
 
-  const response: ReduxResponse<T> = useSelector((state: RootState) => {
+  const response = useSelector((state: RootState) => {
     if (!key) return
-    return state.query[key]
+    return state.query[key] as ReduxResponse<T>
   })
 
   useEffect(() => {
@@ -83,7 +86,11 @@ export function useReduxQuery<T extends {}>(
  *
  * @returns Most recently fetched query response
  */
-export function useReduxPoll<T>(query: () => Promise<RawResponse<T>>, key: string | undefined, intervalMs: number) {
+export function useReduxPoll<T extends Persist, ET extends NoPersist>(
+  query: () => Promise<RawResponse<T, ET>>,
+  key: string | undefined,
+  intervalMs: number,
+) {
   const dispatch = useDispatch()
 
   const pollId = useRef(0)
@@ -105,9 +112,9 @@ export function useReduxPoll<T>(query: () => Promise<RawResponse<T>>, key: strin
     } // Make sure to also clear poll when component unmounts
   }, [key, intervalMs]) // eslint-disable-line
 
-  const response: ReduxResponse<T> = useSelector((state: RootState) => {
+  const response = useSelector((state: RootState) => {
     if (!key) return
-    return state.query[key]
+    return state.query[key] as ReduxResponse<T>
   })
   return response
 }
@@ -120,7 +127,7 @@ export function useReduxPoll<T>(query: () => Promise<RawResponse<T>>, key: strin
  *
  * @returns Response data object at key if present
  */
-export function getQueryData<T extends {}>(query: RootState['query'], key?: string) {
+export function getQueryData<T extends Persist>(query: RootState['query'], key?: string) {
   if (!key) return
   return query[key] as ReduxResponse<T>
 }
@@ -132,6 +139,6 @@ export function getQueryData<T extends {}>(query: RootState['query'], key?: stri
  *
  * @returns Response data object at key if present
  */
-export function useGetQueryData<T>(key?: string) {
+export function useGetQueryData<T extends Persist>(key?: string) {
   return useSelector((state: RootState) => getQueryData<T>(state.query, key))
 }
