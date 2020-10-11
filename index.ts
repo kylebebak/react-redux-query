@@ -3,15 +3,11 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Dispatch } from 'redux'
 import { v4 as uuidv4 } from 'uuid'
 
-export type QueryResponse<T = any> = { data: T; receivedMs: number } | undefined
-export type RawResponse<T = any> = { data: T; persist: true } | { data: any; persist: false }
+export type ReduxResponse<T = any> = T & { receivedMs: number } | undefined
+export type RawResponse<T extends {}> =  T | null | undefined
 
 export interface RootState {
-  query: { [key: string]: QueryResponse }
-}
-
-export interface ReduxQueryOptions<T = any> {
-  onResponse?: (res: RawResponse<T>) => any
+  query: { [key: string]: ReduxResponse }
 }
 
 /**
@@ -19,21 +15,18 @@ export interface ReduxQueryOptions<T = any> {
  *
  * @param query - Function to invoke that returns response
  * @param key - Key in query branch under which to store response
- * @param options - Options object literal, containing:
- *     onResponse - Pass response to this callback
  *
  * @returns Raw response
  */
 export async function reduxQuery<T>(
   query: () => Promise<RawResponse<T>>,
   key: string,
-  options: ReduxQueryOptions<T> & { dispatch: Dispatch },
+  options: { dispatch: Dispatch },
 ): Promise<RawResponse<T>> {
-  const { dispatch, onResponse } = options
+  const { dispatch } = options
 
   const response = await query()
-  if (response.persist) dispatch(Actions.query({ response, key }))
-  if (onResponse) onResponse(response)
+  if (response) dispatch(Actions.query({ response, key }))
   return response
 }
 
@@ -54,17 +47,17 @@ export async function reduxQuery<T>(
 export function useReduxQuery<T>(
   query: (() => Promise<RawResponse<T>>) | null | undefined,
   key: string,
-  options?: ReduxQueryOptions<T> & { noRefetch?: boolean },
+  options?: { noRefetch?: boolean },
 ) {
   const dispatch = useDispatch()
 
-  const response: QueryResponse<T> = useSelector((state: RootState) => {
+  const response: ReduxResponse<T> = useSelector((state: RootState) => {
     if (!key) return
     return state.query[key]
   })
 
   useEffect(() => {
-    if (options.noRefetch && response) return
+    if (options?.noRefetch && response) return
     if (query && key) reduxQuery(query, key, { dispatch, ...options })
   }, [key]) // eslint-disable-line
 
@@ -87,7 +80,6 @@ export function useReduxQuery<T>(
  * @param key - Key in query branch under which to store response; passing
  *     undefined ensures function is NOOP that returns undefined
  * @param intervalMs - Interval between end of query call and next query call
- * @param options - reduxQuery options arg
  *
  * @returns Most recently fetched query response
  */
@@ -95,7 +87,6 @@ export function useReduxPoll<T>(
   query: () => Promise<RawResponse<T>>,
   key: string | undefined,
   intervalMs: number,
-  options?: ReduxQueryOptions<T>,
 ) {
   const dispatch = useDispatch()
 
@@ -108,7 +99,7 @@ export function useReduxPoll<T>(
     // "pseudo-recursive" implementation ensures call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: string) => {
       if (!pollId.current || pollId.current !== pid) return
-      await reduxQuery(query, key, {...dispatch, options})
+      await reduxQuery(query, key, { dispatch })
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
@@ -118,7 +109,7 @@ export function useReduxPoll<T>(
     } // Make sure to also clear poll when component unmounts
   }, [key, intervalMs]) // eslint-disable-line
 
-  const response: QueryResponse<T> = useSelector((state: RootState) => {
+  const response: ReduxResponse<T> = useSelector((state: RootState) => {
     if (!key) return
     return state.query[key]
   })
@@ -135,7 +126,7 @@ export function useReduxPoll<T>(
  */
 export function getQueryData<T = any>(query: RootState['query'], key?: string) {
   if (!key) return
-  return (query[key] as QueryResponse<T>)?.data
+  return query[key] as ReduxResponse<T>
 }
 
 /**
