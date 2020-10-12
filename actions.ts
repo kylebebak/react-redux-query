@@ -16,7 +16,7 @@ export function query(payload: Query): Action {
 }
 
 export interface QueryUpdate<T extends {} = {}> {
-  update: (res: ReduxResponse<T>) => ReduxResponse<T> | undefined
+  update: (res: ReduxResponse<T>) => ReduxResponse<T>
   key: string
 }
 /**

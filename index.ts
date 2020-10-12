@@ -4,7 +4,7 @@ import { Dispatch } from 'redux'
 
 import { query as queryAction } from './actions'
 
-export type RawResponse<T extends {}, ET extends {}> = { store?: T; noStore?: ET }
+export type RawResponse<T extends {}, RT extends {}> = RT & { rqStore: T | null | undefined }
 export type ReduxResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
 
 export interface RootState {
@@ -20,13 +20,14 @@ export interface RootState {
  *
  * @returns Raw response
  */
-export async function reduxQuery<T, ET>(
-  query: () => Promise<RawResponse<T, ET>>,
+export async function reduxQuery<T, RT>(
+  query: () => Promise<RawResponse<T, RT>>,
   key: string,
   dispatch: Dispatch,
-): Promise<RawResponse<T, ET>> {
+): Promise<RawResponse<T, RT>> {
   const response = await query()
-  if (response.store !== undefined) dispatch(queryAction({ response: response.store, key }))
+  const { rqStore } = response
+  if (rqStore !== null && rqStore !== undefined) dispatch(queryAction({ response: rqStore, key }))
   return response
 }
 
@@ -39,15 +40,15 @@ export async function reduxQuery<T, ET>(
  *
  * @param query - Function to invoke that returns raw response
  * @param key - Key in query branch under which to store response; passing
- *     undefined ensures function is NOOP that returns undefined
+ *     null/undefined ensures function is NOOP that returns undefined
  * @param options - reduxQuery options arg, plus:
  *     noRefetch - If there's already response at key, don't refetch
  *
  * @returns Query response
  */
-export function useReduxQuery<T, ET>(
-  query: (() => Promise<RawResponse<T, ET>>) | undefined,
-  key: string | undefined,
+export function useReduxQuery<T, RT>(
+  query: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+  key: string | null | undefined,
   options?: { noRefetch?: boolean },
 ) {
   const dispatch = useDispatch()
@@ -79,14 +80,14 @@ export function useReduxQuery<T, ET>(
  *
  * @param query - Function to invoke that returns raw response
  * @param key - Key in query branch under which to store response; passing
- *     undefined ensures function is NOOP that returns undefined
+ *     null/undefined ensures function is NOOP that returns undefined
  * @param intervalMs - Interval between end of query call and next query call
  *
  * @returns Most recently fetched query response
  */
-export function useReduxPoll<T, ET>(
-  query: (() => Promise<RawResponse<T, ET>>) | undefined,
-  key: string | undefined,
+export function useReduxPoll<T, RT>(
+  query: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+  key: string | null | undefined,
   intervalMs: number,
 ) {
   const dispatch = useDispatch()

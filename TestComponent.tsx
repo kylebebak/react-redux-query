@@ -16,20 +16,19 @@ function TestComponent({}: Props) {
     reduxQuery(
       async () => {
         const res = await request<GetResponse>('https://httpbin.org/get')
-        if (res.type === 'success') return { store: res }
-        else return { noStore: res }
+        return { ...res, rqStore: res.type === 'success' ? res : null }
       },
       'get',
       dispatch,
     ).then((res) => {
-      if (res.store) console.log(res.store.data.origin)
+      if (res.rqStore) console.log(res.rqStore.data.origin)
+      if (res.type === 'success') console.log(res.data.origin)
     })
   }, [])
 
   const res = useReduxQuery(async () => {
     const res = await request<GetResponse>('https://httpbin.org/get')
-    if (res.type === 'success') return { store: res }
-    else return { noStore: res }
+    return { rqStore: res.type === 'success' ? res : null }
   }, 'useQueryGet')
 
   console.log(res?.data.origin)
@@ -37,8 +36,7 @@ function TestComponent({}: Props) {
   const pollRes = useReduxPoll(
     async () => {
       const res = await request<GetResponse>('https://httpbin.org/get')
-      if (res.type === 'success') return { store: res }
-      else return { noStore: res }
+      return { ...res, rqStore: res.type === 'success' ? res : null }
     },
     'usePollGet',
     10 * 1000,
@@ -52,8 +50,7 @@ function TestComponent({}: Props) {
     condition
       ? async () => {
           const res = await request<GetResponse>('https://httpbin.org/get')
-          if (res.type === 'success') return { store: res }
-          else return { noStore: res }
+          return { ...res, rqStore: res.type === 'success' ? res : undefined }
         }
       : undefined,
     condition ? 'useQueryGet' : undefined,
