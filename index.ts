@@ -4,14 +4,11 @@ import { Dispatch } from 'redux'
 
 import { query as queryAction } from './actions'
 
-type Persist = { persist: true }
-type NoPersist = { persist: false }
-
-export type RawResponse<T extends Persist, ET extends NoPersist = NoPersist> = T | ET
-export type ReduxResponse<T extends Persist> = (T & { receivedMs: number }) | undefined
+export type RawResponse<T extends {}, ET extends {}> = { store?: T; noStore?: ET }
+export type ReduxResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
 
 export interface RootState {
-  query: { [key: string]: ReduxResponse<Persist> }
+  query: { [key: string]: ReduxResponse }
 }
 
 /**
@@ -23,13 +20,13 @@ export interface RootState {
  *
  * @returns Raw response
  */
-export async function reduxQuery<T extends Persist, ET extends NoPersist>(
+export async function reduxQuery<T, ET>(
   query: () => Promise<RawResponse<T, ET>>,
   key: string,
   dispatch: Dispatch,
 ): Promise<RawResponse<T, ET>> {
   const response = await query()
-  if (response.persist) dispatch(queryAction({ response, key }))
+  if (response.store !== undefined) dispatch(queryAction({ response: response.store, key }))
   return response
 }
 

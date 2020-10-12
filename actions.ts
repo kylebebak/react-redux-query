@@ -1,7 +1,7 @@
-import { RawResponse, ReduxResponse } from './index'
+import { ReduxResponse } from './index'
 
 export interface Query<T extends {} = {}> {
-  response: RawResponse<T>
+  response: T
   key: string
 }
 /**
@@ -16,7 +16,7 @@ export function query(payload: Query): Action {
 }
 
 export interface QueryUpdate<T extends {} = {}> {
-  update: (res: ReduxResponse<T>) => RawResponse<T> | undefined
+  update: (res: ReduxResponse<T>) => ReduxResponse<T> | undefined
   key: string
 }
 /**
