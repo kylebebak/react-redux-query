@@ -44,9 +44,9 @@ export async function reduxQuery<T, ET>(
  *
  * @returns Query response
  */
-export function useReduxQuery<T extends Persist, ET extends NoPersist>(
+export function useReduxQuery<T, ET>(
   query: () => Promise<RawResponse<T, ET>>,
-  key: string,
+  key: string | undefined,
   options?: { noRefetch?: boolean },
 ) {
   const dispatch = useDispatch()
@@ -83,7 +83,7 @@ export function useReduxQuery<T extends Persist, ET extends NoPersist>(
  *
  * @returns Most recently fetched query response
  */
-export function useReduxPoll<T extends Persist, ET extends NoPersist>(
+export function useReduxPoll<T, ET>(
   query: () => Promise<RawResponse<T, ET>>,
   key: string | undefined,
   intervalMs: number,
@@ -124,7 +124,7 @@ export function useReduxPoll<T extends Persist, ET extends NoPersist>(
  *
  * @returns Response data object at key if present
  */
-export function getQueryData<T extends Persist>(query: RootState['query'], key?: string) {
+export function getResponse<T>(query: RootState['query'], key?: string) {
   if (!key) return
   return query[key] as ReduxResponse<T>
 }
@@ -136,6 +136,6 @@ export function getQueryData<T extends Persist>(query: RootState['query'], key?:
  *
  * @returns Response data object at key if present
  */
-export function useGetQueryData<T extends Persist>(key?: string) {
-  return useSelector((state: RootState) => getQueryData<T>(state.query, key))
+export function useGetResponse<T>(key?: string) {
+  return useSelector((state: RootState) => getResponse<T>(state.query, key))
 }
