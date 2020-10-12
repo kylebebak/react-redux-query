@@ -34,13 +34,32 @@ function TestComponent({}: Props) {
 
   console.log(res?.data.origin)
 
-  const pollRes = useReduxPoll(async () => {
-    const res = await request<GetResponse>('https://httpbin.org/get')
-    if (res.type === 'success') return { store: res }
-    else return { noStore: res }
-  }, 'usePollGet', 10 * 1000)
+  const pollRes = useReduxPoll(
+    async () => {
+      const res = await request<GetResponse>('https://httpbin.org/get')
+      if (res.type === 'success') return { store: res }
+      else return { noStore: res }
+    },
+    'usePollGet',
+    10 * 1000,
+  )
 
   console.log(pollRes?.data.origin)
+
+  const condition = 1 > 0
+
+  const undefinedQueryRes = useReduxQuery(
+    condition
+      ? async () => {
+          const res = await request<GetResponse>('https://httpbin.org/get')
+          if (res.type === 'success') return { store: res }
+          else return { noStore: res }
+        }
+      : undefined,
+    condition ? 'useQueryGet' : undefined,
+  )
+
+  console.log(undefinedQueryRes?.data.origin)
 
   return null
 }

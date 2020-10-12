@@ -38,14 +38,15 @@ export async function reduxQuery<T, ET>(
  * alone doesn't refetch data.
  *
  * @param query - Function to invoke that returns raw response
- * @param key - Key in query branch under which to store response
+ * @param key - Key in query branch under which to store response; passing
+ *     undefined ensures function is NOOP that returns undefined
  * @param options - reduxQuery options arg, plus:
  *     noRefetch - If there's already response at key, don't refetch
  *
  * @returns Query response
  */
 export function useReduxQuery<T, ET>(
-  query: () => Promise<RawResponse<T, ET>>,
+  query: (() => Promise<RawResponse<T, ET>>) | undefined,
   key: string | undefined,
   options?: { noRefetch?: boolean },
 ) {
@@ -84,7 +85,7 @@ export function useReduxQuery<T, ET>(
  * @returns Most recently fetched query response
  */
 export function useReduxPoll<T, ET>(
-  query: () => Promise<RawResponse<T, ET>>,
+  query: (() => Promise<RawResponse<T, ET>>) | undefined,
   key: string | undefined,
   intervalMs: number,
 ) {
@@ -94,7 +95,7 @@ export function useReduxPoll<T, ET>(
 
   useEffect(() => {
     pollId.current = pollId.current + 1 // Clear previous poll, create id for new poll
-    if (!key) return
+    if (!key || !query) return
 
     // "pseudo-recursive" implementation ensures call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {

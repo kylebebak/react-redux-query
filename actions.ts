@@ -30,6 +30,4 @@ export function queryUpdate(payload: QueryUpdate): Action {
   }
 }
 
-export type Action =
-  | { type: 'QUERY'; payload: Query }
-  | { type: 'QUERY_UPDATE'; payload: QueryUpdate }
+export type Action = { type: 'QUERY'; payload: Query } | { type: 'QUERY_UPDATE'; payload: QueryUpdate }

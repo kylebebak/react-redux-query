@@ -3,7 +3,7 @@ import test from 'ava'
 import { query, queryUpdate } from './actions'
 import reduce from './reducers'
 
-test('request: type, status, statusText, url and default headers', async t => {
+test('request: type, status, statusText, url and default headers', async (t) => {
   interface SuccessData {
     origin: string
     url: string
@@ -23,7 +23,7 @@ test('request: type, status, statusText, url and default headers', async t => {
   }
 })
 
-test('request: querystring', async t => {
+test('request: querystring', async (t) => {
   const response = (await request('https://httpbin.org/get', {
     params: { a: 'b', c: 'd', e: undefined },
   })) as SuccessResponse<{ url: string }>
