@@ -1,33 +1,33 @@
-import { ReduxResponse } from './index'
+import { QueryResponse } from './index'
 
-export interface Query<T extends {} = {}> {
-  response: T
+export interface Save<T extends {} = {}> {
   key: string
+  response: T
 }
 /**
  * Stores `response` to request. `key` is usually unique per URL path, and
- * should be similar to URL path.
+ * should probably be similar to URL path.
  */
-export function query(payload: Query): Action {
+export function save(payload: Save): Action {
   return {
-    type: 'QUERY',
+    type: 'SAVE',
     payload,
   }
 }
 
-export interface QueryUpdate<T extends {} = {}> {
-  update: (res: ReduxResponse<T>) => ReduxResponse<T>
+export interface Update<T extends {} = {}> {
   key: string
+  updater: (response: QueryResponse<T>) => QueryResponse<T>
 }
 /**
- * Like `query`, but takes an `update` function, which receives the response at
+ * Like `save`, but takes an `updater` function, which receives the response at
  * `key` and must return a response.
  */
-export function queryUpdate(payload: QueryUpdate): Action {
+export function update(payload: Update): Action {
   return {
-    type: 'QUERY_UPDATE',
+    type: 'UPDATE',
     payload,
   }
 }
 
-export type Action = { type: 'QUERY'; payload: Query } | { type: 'QUERY_UPDATE'; payload: QueryUpdate }
+export type Action = { type: 'SAVE'; payload: Save } | { type: 'UPDATE'; payload: Update }

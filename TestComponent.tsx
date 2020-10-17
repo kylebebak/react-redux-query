@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import ReactDOM from 'react-dom'
 import request from 'request-dot-js'
 
-import { reduxQuery, useReduxQuery, useReduxPoll } from './index'
+import { query, useQuery, usePoll } from './index'
 
 type GetResponse = { origin: string; url: string; headers: { [key: string]: string } }
 
@@ -13,32 +13,32 @@ function TestComponent({}: Props) {
   const dispatch = useDispatch()
 
   useEffect(() => {
-    reduxQuery(
+    query(
+      'get',
       async () => {
         const res = await request<GetResponse>('https://httpbin.org/get')
-        return { ...res, rqStore: res.type === 'success' ? res : null }
+        return { ...res, qRes: res.type === 'success' ? res : null }
       },
-      'get',
       dispatch,
     ).then((res) => {
-      if (res.rqStore) console.log(res.rqStore.data.origin)
+      if (res.qRes) console.log(res.qRes.data.origin)
       if (res.type === 'success') console.log(res.data.origin)
     })
   }, [])
 
-  const res = useReduxQuery(async () => {
+  const res = useQuery('useQueryGet', async () => {
     const res = await request<GetResponse>('https://httpbin.org/get')
-    return { rqStore: res.type === 'success' ? res : null }
-  }, 'useQueryGet')
+    return { qRes: res.type === 'success' ? res : null }
+  })
 
   console.log(res?.data.origin)
 
-  const pollRes = useReduxPoll(
+  const pollRes = usePoll(
+    'usePollGet',
     async () => {
       const res = await request<GetResponse>('https://httpbin.org/get')
-      return { ...res, rqStore: res.type === 'success' ? res : null }
+      return { ...res, qRes: res.type === 'success' ? res : null }
     },
-    'usePollGet',
     10 * 1000,
   )
 
@@ -46,14 +46,14 @@ function TestComponent({}: Props) {
 
   const condition = 1 > 0
 
-  const undefinedQueryRes = useReduxQuery(
+  const undefinedQueryRes = useQuery(
+    condition ? 'useQueryGet' : undefined,
     condition
       ? async () => {
           const res = await request<GetResponse>('https://httpbin.org/get')
-          return { ...res, rqStore: res.type === 'success' ? res : undefined }
+          return { ...res, qRes: res.type === 'success' ? res : undefined }
         }
       : undefined,
-    condition ? 'useQueryGet' : undefined,
   )
 
   console.log(undefinedQueryRes?.data.origin)

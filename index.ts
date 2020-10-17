@@ -2,92 +2,93 @@ import { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Dispatch } from 'redux'
 
-import { query as queryAction } from './actions'
+import { save } from './actions'
 
-export type RawResponse<T extends {}, RT extends {}> = RT & { rqStore: T | null | undefined }
-export type ReduxResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
+export type RawResponse<T extends {}, RT extends {}> = RT & { qRes: T | null | undefined }
+export type QueryResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
 
-export interface RootState {
-  query: { [key: string]: ReduxResponse }
+export interface State {
+  query: { [key: string]: QueryResponse }
 }
 
 /**
- * Fetches data and throws it into Redux.
+ * Calls `fetcher`, throws `response.qRes` into `query` branch under `key`, and
+ * immediately returns raw response.
  *
- * @param query - Function to invoke that returns response
  * @param key - Key in query branch under which to store response
+ * @param fetcher - Function that returns raw response
  * @param dispatch - Dispatch fn to send response to store
  *
  * @returns Raw response
  */
-export async function reduxQuery<T, RT>(
-  query: () => Promise<RawResponse<T, RT>>,
+export async function query<T, RT>(
   key: string,
+  fetcher: () => Promise<RawResponse<T, RT>>,
   dispatch: Dispatch,
 ): Promise<RawResponse<T, RT>> {
-  const response = await query()
-  const { rqStore } = response
-  if (rqStore !== null && rqStore !== undefined) dispatch(queryAction({ response: rqStore, key }))
+  const response = await fetcher()
+  const { qRes } = response
+  if (qRes !== null && qRes !== undefined) dispatch(save({ response: qRes, key }))
   return response
 }
 
 /**
- * Invokes `query`, throws response into `query` branch under `key`, and
+ * Calls `fetcher`, throws `response.qRes` into `query` branch under `key`, and
  * immediately returns response from this branch.
  *
- * Data is only refetched if `key` changes; passing in a new `query` function
+ * Data is only refetched if `key` changes; passing in a new `fetcher` function
  * alone doesn't refetch data.
  *
- * @param query - Function to invoke that returns raw response
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param options - reduxQuery options arg, plus:
+ * @param fetcher - Function that returns raw response
+ * @param options - query options arg, plus:
  *     noRefetch - If there's already response at key, don't refetch
  *
  * @returns Query response
  */
-export function useReduxQuery<T, RT>(
-  query: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+export function useQuery<T, RT>(
   key: string | null | undefined,
+  fetcher: (() => Promise<RawResponse<T, RT>>) | null | undefined,
   options?: { noRefetch?: boolean },
 ) {
   const dispatch = useDispatch()
 
-  const response = useSelector((state: RootState) => {
+  const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as ReduxResponse<T>
+    return state.query[key] as QueryResponse<T>
   })
 
   useEffect(() => {
     if (options?.noRefetch && response) return
-    if (query && key) reduxQuery(query, key, dispatch)
+    if (fetcher && key) query(key, fetcher, dispatch)
   }, [key]) // eslint-disable-line
 
   return response
 }
 
 /**
- * Invokes `query`, throws response into `query` branch under `key`, and
+ * Calls `fetcher`, throws `response.rRes` into `query` branch under `key`, and
  * returns response from this branch.
  *
- * After query returns, it's invoked again after intervalMs. Interval is
+ * After fetcher returns, it's called again after intervalMs. Interval is
  * cleared if component unmounts. Interval is cleared and reset if `key`
  * changes. This allows for polling interval that adapts to network and server
  * speed.
  *
- * Poll is only reset if `key` changes; passing in a new `query` function
- * alone doesn't reset poll.
+ * Poll is only reset if `key` changes; passing in a new `query` function alone
+ * doesn't reset poll.
  *
- * @param query - Function to invoke that returns raw response
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param intervalMs - Interval between end of query call and next query call
+ * @param fetcher - Function that returns raw response
+ * @param intervalMs - Interval between end of fetcher call and next fetcher call
  *
  * @returns Most recently fetched query response
  */
-export function useReduxPoll<T, RT>(
-  query: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+export function usePoll<T, RT>(
   key: string | null | undefined,
+  fetcher: (() => Promise<RawResponse<T, RT>>) | null | undefined,
   intervalMs: number,
 ) {
   const dispatch = useDispatch()
@@ -95,49 +96,51 @@ export function useReduxPoll<T, RT>(
   const pollId = useRef(0)
 
   useEffect(() => {
-    pollId.current = pollId.current + 1 // Clear previous poll, create id for new poll
-    if (!key || !query) return
+    // Clear previous poll, create id for new poll
+    pollId.current = pollId.current + 1
+    if (!key || !fetcher) return
 
-    // "pseudo-recursive" implementation ensures call stack doesn't grow: https://stackoverflow.com/questions/48736331
+    // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {
       if (pollId.current === 0 || pollId.current !== pid) return
-      await reduxQuery(query, key, dispatch)
+      await query(key, fetcher, dispatch)
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
 
+    // Also clear poll when component unmounts
     return () => {
       pollId.current = 0
-    } // Make sure to also clear poll when component unmounts
+    }
   }, [key, intervalMs]) // eslint-disable-line
 
-  const response = useSelector((state: RootState) => {
+  const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as ReduxResponse<T>
+    return state.query[key] as QueryResponse<T>
   })
   return response
 }
 
 /**
- * Retrieves an object from the query branch of the state tree.
+ * Retrieves a response from the query branch of the state tree.
  *
  * @param query - Current query branch of the state tree
- * @param key - Response key in query branch
+ * @param key - Key in query branch
  *
- * @returns Response data object at key if present
+ * @returns Query response at key if present
  */
-export function getResponse<T>(query: RootState['query'], key?: string) {
+export function getResponse<T>(query: State['query'], key: string | null | undefined) {
   if (!key) return
-  return query[key] as ReduxResponse<T>
+  return query[key] as QueryResponse<T>
 }
 
 /**
- * Retrieves an object from the query branch of the state tree.
+ * Retrieves a response from the query branch of the state tree.
  *
- * @param key - Response key in query branch
+ * @param key - Key in query branch
  *
- * @returns Response data object at key if present
+ * @returns Query response at key if present
  */
-export function useGetResponse<T>(key?: string) {
-  return useSelector((state: RootState) => getResponse<T>(state.query, key))
+export function useResponse<T>(key: string | null | undefined) {
+  return useSelector((state: State) => getResponse<T>(state.query, key))
 }

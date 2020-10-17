@@ -1,4 +1,4 @@
-import { RootState } from './index'
+import { State } from './index'
 import { Action } from './actions'
 
 /**
@@ -9,11 +9,11 @@ import { Action } from './actions'
  * response. It also allows them to render themselves immediately if the data
  * they need has already been added to the 'query' branch of the state tree.
  */
-export default function reduce(state: RootState['query'] = {}, action: Action): RootState['query'] {
+export default function reduce(state: State['query'] = {}, action: Action): State['query'] {
   const receivedMs = Date.now()
 
   switch (action.type) {
-    case 'QUERY': {
+    case 'SAVE': {
       const { response, key } = action.payload
 
       return {
@@ -22,10 +22,10 @@ export default function reduce(state: RootState['query'] = {}, action: Action): 
       }
     }
 
-    case 'QUERY_UPDATE': {
-      const { update, key } = action.payload
+    case 'UPDATE': {
+      const { updater, key } = action.payload
 
-      const res = update(state[key])
+      const res = updater(state[key])
 
       return {
         ...state,
