@@ -26,6 +26,22 @@ function TestComponent({}: Props) {
     })
   }, [])
 
+  useEffect(() => {
+    query(
+      'get',
+      async () => {
+        const res = await request<GetResponse>('https://httpbin.org/get')
+        return { ...res, qRes: res.type === 'success' ? res : null }
+      },
+      dispatch,
+      { dedupe: true },
+    ).then((res) => {
+      // This request won't be sent
+      if (res?.qRes) console.log(res?.qRes.data.origin)
+      if (res?.type === 'success') console.log(res?.data.origin)
+    })
+  }, [])
+
   const res = useQuery('useQueryGet', async () => {
     const res = await request<GetResponse>('https://httpbin.org/get')
     return { qRes: res.type === 'success' ? res : null }

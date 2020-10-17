@@ -4,54 +4,74 @@ import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export type RawResponse<T extends {}, RT extends {}> = RT & { qRes: T | null | undefined }
-export type QueryResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
-
 export interface State {
   query: { [key: string]: QueryResponse }
 }
 
+const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
+
+export type RawResponse<T extends {}, RT extends {}> = RT & { qRes: T | null | undefined }
+export type QueryResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
+type RawResponseType<T, RT, DD> = DD extends false ? RawResponse<T, RT> : RawResponse<T, RT> | undefined
+
+export interface QueryOptions<DD extends boolean = false> {
+  dedupe?: DD
+  dedupeMs?: number
+}
+
 /**
- * Calls `fetcher`, throws `response.qRes` into `query` branch under `key`, and
+ * Calls fetcher, throws response.qRes into query branch under key, and
  * immediately returns raw response.
  *
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns raw response
  * @param dispatch - Dispatch fn to send response to store
+ * @param options - Query options
  *
- * @returns Raw response
+ * @returns Raw response, or undefined if fetcher call gets deduped
  */
-export async function query<T, RT>(
+export async function query<T, RT, DD extends boolean = false>(
   key: string,
   fetcher: () => Promise<RawResponse<T, RT>>,
   dispatch: Dispatch,
-): Promise<RawResponse<T, RT>> {
+  options: QueryOptions<DD> = {},
+): Promise<RawResponseType<T, RT, DD>> {
+  const { dedupe = false, dedupeMs = 2000 } = options
+
+  const now = Date.now()
+  const fetchState = fetchStateByKey[key]
+  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined as RawResponseType<T, RT, DD>
+
+  fetchStateByKey[key] = { sentMs: now }
   const response = await fetcher()
+  fetchStateByKey[key] = undefined
+
   const { qRes } = response
   if (qRes !== null && qRes !== undefined) dispatch(save({ response: qRes, key }))
-  return response
+  return response as RawResponseType<T, RT, DD>
 }
 
 /**
- * Calls `fetcher`, throws `response.qRes` into `query` branch under `key`, and
+ * Calls fetcher, throws response.qRes into query branch under key, and
  * immediately returns response from this branch.
  *
- * Data is only refetched if `key` changes; passing in a new `fetcher` function
+ * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response
- * @param options - query options arg, plus:
- *     noRefetch - If there's already response at key, don't refetch
+ * @param options - query options, plus noRefetch; Don't refetch is there's
+ *     already response at key
  *
  * @returns Query response
  */
 export function useQuery<T, RT>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<T, RT>>) | null | undefined,
-  options?: { noRefetch?: boolean },
+  options: { noRefetch?: boolean } & QueryOptions = {},
 ) {
+  const { noRefetch = false, ...rest } = options
   const dispatch = useDispatch()
 
   const response = useSelector((state: State) => {
@@ -60,29 +80,29 @@ export function useQuery<T, RT>(
   })
 
   useEffect(() => {
-    if (options?.noRefetch && response) return
-    if (fetcher && key) query(key, fetcher, dispatch)
+    if (response && noRefetch) return
+    if (fetcher && key) query(key, fetcher, dispatch, rest)
   }, [key]) // eslint-disable-line
 
   return response
 }
 
 /**
- * Calls `fetcher`, throws `response.rRes` into `query` branch under `key`, and
- * returns response from this branch.
+ * Calls fetcher, throws response.rRes into query branch under key, and returns
+ * response from this branch.
  *
- * After fetcher returns, it's called again after intervalMs. Interval is
- * cleared if component unmounts. Interval is cleared and reset if `key`
- * changes. This allows for polling interval that adapts to network and server
- * speed.
+ * After fetcher returns, it's called again after intervalMs. This allows for
+ * polling interval that adapts to network and server speed. Poll is cleared if
+ * component unmounts. Poll is cleared and reset if key changes.
  *
- * Poll is only reset if `key` changes; passing in a new `query` function alone
- * doesn't reset poll.
+ * Poll is only reset if key or intervalMs changes; passing in a new query
+ * function alone doesn't reset poll.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response
- * @param intervalMs - Interval between end of fetcher call and next fetcher call
+ * @param intervalMs - Interval between end of fetcher call and next fetcher
+ *      call
  *
  * @returns Most recently fetched query response
  */

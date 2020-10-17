@@ -5,8 +5,8 @@ export interface Save<T extends {} = {}> {
   response: T
 }
 /**
- * Stores `response` to request. `key` is usually unique per URL path, and
- * should probably be similar to URL path.
+ * Stores response to request. key is usually unique per URL path, and should
+ * probably be similar to URL path.
  */
 export function save(payload: Save): Action {
   return {
@@ -20,8 +20,8 @@ export interface Update<T extends {} = {}> {
   updater: (response: QueryResponse<T>) => QueryResponse<T>
 }
 /**
- * Like `save`, but takes an `updater` function, which receives the response at
- * `key` and must return a response.
+ * Like save, but takes an updater function, which receives the response at key
+ * and must return a response.
  */
 export function update(payload: Update): Action {
   return {

@@ -2,8 +2,8 @@ import { State } from './index'
 import { Action } from './actions'
 
 /**
- * This branch of state tree stores responses to requests. `key` is usually
- * unique per URL path, and should be similar to URL path.
+ * This branch of state tree stores responses to requests. key is usually unique
+ * per URL path, and should be similar to URL path.
  *
  * This allows any component to subscribe to changes to data returned by any
  * response. It also allows them to render themselves immediately if the data
