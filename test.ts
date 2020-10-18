@@ -1,7 +1,7 @@
 import test from 'ava'
 
-import { query, queryUpdate } from './actions'
-import reduce from './reducers'
+import { save, update } from './actions'
+import reduce from './reducer'
 
 test('request: type, status, statusText, url and default headers', async (t) => {
   interface SuccessData {

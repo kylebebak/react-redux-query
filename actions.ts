@@ -1,4 +1,4 @@
-import { QueryResponse } from './index'
+import { QueryResponse } from './query'
 
 export interface Save<T extends {} = {}> {
   key: string
