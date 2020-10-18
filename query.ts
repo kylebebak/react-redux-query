@@ -20,12 +20,12 @@ export interface QueryOptions<DD extends boolean = false> {
 }
 
 /**
- * Calls fetcher, throws response.qRes into query branch under key, and
- * immediately returns raw response.
+ * Calls fetcher and awaits raw response. Throws response.qRes into query branch
+ * under key and returns raw response.
  *
  * @param key - Key in query branch under which to store response
- * @param fetcher - Function that returns raw response
- * @param dispatch - Dispatch fn to send response to store
+ * @param fetcher - Function that returns raw response with qRes property
+ * @param dispatch - Dispatch function to send response to store
  * @param options - Query options
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
@@ -52,16 +52,17 @@ export async function query<T, RT, DD extends boolean = false>(
 }
 
 /**
- * Calls fetcher, throws response.qRes into query branch under key, and
- * immediately returns response from this branch.
+ * Hook calls fetcher and throws response.qRes into query branch under key.
+ * Immediately returns query response under key, and subscribes to changes in
+ * this response.
  *
  * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns raw response
- * @param options - query options, plus noRefetch; Don't refetch is there's
+ * @param fetcher - Function that returns raw response with qRes property
+ * @param options - query options, plus noRefetch; Don't refetch if there's
  *     already response at key
  *
  * @returns Query response
@@ -88,19 +89,21 @@ export function useQuery<T, RT>(
 }
 
 /**
- * Calls fetcher, throws response.rRes into query branch under key, and returns
- * response from this branch.
+ * Hook calls fetcher and throws response.qRes into query branch under key.
+ * Immediately returns query response under key, and subscribes to changes in
+ * this response.
  *
- * After fetcher returns, it's called again after intervalMs. This allows for
- * polling interval that adapts to network and server speed. Poll is cleared if
- * component unmounts. Poll is cleared and reset if key changes.
+ * After fetcher returns, it's called again after intervalMs. Actual polling
+ * interval depends on how long fetcher takes to return, which means polling
+ * interval adapts to network and server speed.
  *
- * Poll is only reset if key or intervalMs changes; passing in a new query
- * function alone doesn't reset poll.
+ * Poll is cleared if component unmounts. Poll is cleared and reset if key or
+ * intervalMs changes. Passing in a new fetcher function alone doesn't reset
+ * poll.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns raw response
+ * @param fetcher - Function that returns raw response with qRes property
  * @param intervalMs - Interval between end of fetcher call and next fetcher
  *      call
  *
@@ -142,25 +145,26 @@ export function usePoll<T, RT>(
 }
 
 /**
- * Retrieves a response from the query branch of the state tree.
+ * Retrieves a query response from Redux.
  *
- * @param query - Current query branch of the state tree
+ * @param query - Current query branch of state tree
  * @param key - Key in query branch
  *
  * @returns Query response at key if present
  */
-export function getResponse<T>(query: State['query'], key: string | null | undefined) {
+export function getResponse<T>(state: State, key: string | null | undefined) {
   if (!key) return
-  return query[key] as QueryResponse<T>
+  return state.query[key] as QueryResponse<T>
 }
 
 /**
- * Retrieves a response from the query branch of the state tree.
+ * Hook retrieves a query response from Redux, and subscribes to changes in
+ * response.
  *
  * @param key - Key in query branch
  *
  * @returns Query response at key if present
  */
 export function useResponse<T>(key: string | null | undefined) {
-  return useSelector((state: State) => getResponse<T>(state.query, key))
+  return useSelector((state: State) => getResponse<T>(state, key))
 }
