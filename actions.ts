@@ -1,8 +1,8 @@
 import { QueryResponse } from './query'
 
-export interface Save<T extends {} = {}> {
+export interface Save<QR extends {} = {}> {
   key: string
-  response: T
+  response: QR
 }
 /**
  * Stores response to request. key is usually unique per URL path, and should
@@ -15,9 +15,9 @@ export function save(payload: Save): Action {
   }
 }
 
-export interface Update<T extends {} = {}> {
+export interface Update<QR extends {} = {}> {
   key: string
-  updater: (response: QueryResponse<T>) => QueryResponse<T>
+  updater: (response: QueryResponse<QR>) => QueryResponse<QR>
 }
 /**
  * Like save, but takes an updater function, which receives the response at key

@@ -15,11 +15,11 @@ function Component() {
       'get',
       async () => {
         const res = await request<GetData>('https://httpbin.org/get')
-        return { ...res, qRes: res.type === 'success' ? res : null }
+        return { ...res, queryResponse: res.type === 'success' ? res : null }
       },
       dispatch,
     ).then((res) => {
-      if (res.qRes) console.log(res.qRes.data.origin)
+      if (res.queryResponse) console.log(res.queryResponse.data.origin)
       if (res.type === 'success') console.log(res.data.origin)
     })
   }, [dispatch])
@@ -29,7 +29,7 @@ function Component() {
       'get',
       async () => {
         const res = await request<GetData>('https://httpbin.org/get')
-        return { ...res, qRes: res.type === 'success' ? res : null }
+        return { ...res, queryResponse: res.type === 'success' ? res : null }
       },
       dispatch,
       { dedupe: true },
@@ -39,9 +39,8 @@ function Component() {
   }, [dispatch])
 
   const res = useQuery('useQueryGet', async () => {
-    console.log('requesting');
     const res = await request<GetData>('https://httpbin.org/get')
-    return { qRes: res.type === 'success' ? res : null }
+    return { queryResponse: res.type === 'success' ? res : null }
   })
 
   console.log('useQuery', res?.data.origin)
@@ -49,9 +48,8 @@ function Component() {
   const pollRes = usePoll(
     'usePollGet',
     async () => {
-      console.log('polling');
       const res = await request<GetData>('https://httpbin.org/get')
-      return { ...res, qRes: res.type === 'success' ? res : null }
+      return { ...res, queryResponse: res.type === 'success' ? res : null }
     },
     5 * 1000,
   )

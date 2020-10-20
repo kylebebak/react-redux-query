@@ -10,9 +10,9 @@ export interface State {
 
 const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
 
-export type RawResponse<T extends {}, RT extends {}> = RT & { qRes: T | null | undefined }
-export type QueryResponse<T extends {} = {}> = (T & { receivedMs: number }) | undefined
-type RawResponseType<T, RT, DD> = DD extends false ? RawResponse<T, RT> : RawResponse<T, RT> | undefined
+export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse: QR | null | undefined }
+export type QueryResponse<QR extends {} = {}> = (QR & { receivedMs: number }) | undefined
+type RawResponseType<RR, QR, DD> = DD extends false ? RawResponse<RR, QR> : RawResponse<RR, QR> | undefined
 
 export interface QueryOptions<DD extends boolean = false> {
   dedupe?: DD
@@ -20,56 +20,58 @@ export interface QueryOptions<DD extends boolean = false> {
 }
 
 /**
- * Calls fetcher and awaits raw response. Throws response.qRes into query branch
- * under key and returns raw response.
+ * Calls fetcher and awaits raw response. Throws response.queryResponse into
+ * query branch under key and returns raw response.
  *
  * @param key - Key in query branch under which to store response
- * @param fetcher - Function that returns raw response with qRes property
+ * @param fetcher - Function that returns raw response with queryResponse
+ *     property
  * @param dispatch - Dispatch function to send response to store
  * @param options - Query options
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
  */
-export async function query<T, RT, DD extends boolean = false>(
+export async function query<RR, QR, DD extends boolean = false>(
   key: string,
-  fetcher: () => Promise<RawResponse<T, RT>>,
+  fetcher: () => Promise<RawResponse<RR, QR>>,
   dispatch: Dispatch,
   options: QueryOptions<DD> = {},
-): Promise<RawResponseType<T, RT, DD>> {
+): Promise<RawResponseType<RR, QR, DD>> {
   const { dedupe = false, dedupeMs = 2000 } = options
 
   const now = Date.now()
   const fetchState = fetchStateByKey[key]
-  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined as RawResponseType<T, RT, DD>
+  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined as RawResponseType<RR, QR, DD>
 
   fetchStateByKey[key] = { sentMs: now }
   const response = await fetcher()
   fetchStateByKey[key] = undefined
 
-  const { qRes } = response
-  if (qRes !== null && qRes !== undefined) dispatch(save({ response: qRes, key }))
-  return response as RawResponseType<T, RT, DD>
+  const { queryResponse } = response
+  if (queryResponse !== null && queryResponse !== undefined) dispatch(save({ response: queryResponse, key }))
+  return response as RawResponseType<RR, QR, DD>
 }
 
 /**
- * Hook calls fetcher and throws response.qRes into query branch under key.
- * Immediately returns query response under key, and subscribes to changes in
- * this response.
+ * Hook calls fetcher and throws response.queryResponse into query branch under
+ * key. Immediately returns query response under key, and subscribes to changes
+ * in this response.
  *
  * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns raw response with qRes property
+ * @param fetcher - Function that returns raw response with queryResponse
+ *     property
  * @param options - query options, plus noRefetch; Don't refetch if there's
  *     already response at key
  *
  * @returns Query response
  */
-export function useQuery<T, RT>(
+export function useQuery<RR, QR>(
   key: string | null | undefined,
-  fetcher: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+  fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
   options: { noRefetch?: boolean } & QueryOptions = {},
 ) {
   const { noRefetch = false, ...rest } = options
@@ -77,7 +79,7 @@ export function useQuery<T, RT>(
 
   const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as QueryResponse<T>
+    return state.query[key] as QueryResponse<QR>
   })
 
   useEffect(() => {
@@ -89,9 +91,9 @@ export function useQuery<T, RT>(
 }
 
 /**
- * Hook calls fetcher and throws response.qRes into query branch under key.
- * Immediately returns query response under key, and subscribes to changes in
- * this response.
+ * Hook calls fetcher and throws response.queryResponse into query branch under
+ * key. Immediately returns query response under key, and subscribes to changes
+ * in this response.
  *
  * After fetcher returns, it's called again after intervalMs. Actual polling
  * interval depends on how long fetcher takes to return, which means polling
@@ -103,15 +105,16 @@ export function useQuery<T, RT>(
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns raw response with qRes property
+ * @param fetcher - Function that returns raw response with queryResponse
+ *     property
  * @param intervalMs - Interval between end of fetcher call and next fetcher
  *      call
  *
  * @returns Most recently fetched query response
  */
-export function usePoll<T, RT>(
+export function usePoll<RR, QR>(
   key: string | null | undefined,
-  fetcher: (() => Promise<RawResponse<T, RT>>) | null | undefined,
+  fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
   intervalMs: number,
 ) {
   const dispatch = useDispatch()
@@ -139,7 +142,7 @@ export function usePoll<T, RT>(
 
   const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as QueryResponse<T>
+    return state.query[key] as QueryResponse<QR>
   })
   return response
 }
@@ -152,9 +155,9 @@ export function usePoll<T, RT>(
  *
  * @returns Query response at key if present
  */
-export function getResponse<T>(state: State, key: string | null | undefined) {
+export function getResponse<QR>(state: State, key: string | null | undefined) {
   if (!key) return
-  return state.query[key] as QueryResponse<T>
+  return state.query[key] as QueryResponse<QR>
 }
 
 /**
@@ -165,6 +168,6 @@ export function getResponse<T>(state: State, key: string | null | undefined) {
  *
  * @returns Query response at key if present
  */
-export function useResponse<T>(key: string | null | undefined) {
-  return useSelector((state: State) => getResponse<T>(state, key))
+export function useResponse<QR>(key: string | null | undefined) {
+  return useSelector((state: State) => getResponse<QR>(state, key))
 }
