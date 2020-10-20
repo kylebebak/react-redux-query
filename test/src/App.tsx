@@ -45,6 +45,12 @@ function Component() {
 
   console.log('useQuery', res?.data.origin)
 
+  const noQueryRes = useQuery('useNoQuery', async () => {
+    return await request<GetData>('https://httpbin.org/get')
+  })
+
+  console.log(noQueryRes?.type)
+
   const pollRes = usePoll(
     'usePollGet',
     async () => {

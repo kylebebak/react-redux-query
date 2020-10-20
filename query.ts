@@ -10,7 +10,7 @@ export interface State {
 
 const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
 
-export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse: QR | null | undefined }
+export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse?: QR | null }
 export type QueryResponse<QR extends {} = {}> = (QR & { receivedMs: number }) | undefined
 type RawResponseType<RR, QR, DD> = DD extends false ? RawResponse<RR, QR> : RawResponse<RR, QR> | undefined
 
@@ -31,7 +31,7 @@ export interface QueryOptions<DD extends boolean = false> {
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
  */
-export async function query<RR, QR, DD extends boolean = false>(
+export async function query<RR, QR = RR, DD extends boolean = false>(
   key: string,
   fetcher: () => Promise<RawResponse<RR, QR>>,
   dispatch: Dispatch,
@@ -48,7 +48,7 @@ export async function query<RR, QR, DD extends boolean = false>(
   fetchStateByKey[key] = undefined
 
   const { queryResponse } = response
-  if (queryResponse !== null && queryResponse !== undefined) dispatch(save({ response: queryResponse, key }))
+  if (queryResponse !== null) dispatch(save({ response: queryResponse || response, key }))
   return response as RawResponseType<RR, QR, DD>
 }
 
@@ -69,7 +69,7 @@ export async function query<RR, QR, DD extends boolean = false>(
  *
  * @returns Query response
  */
-export function useQuery<RR, QR>(
+export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
   options: { noRefetch?: boolean } & QueryOptions = {},
@@ -112,7 +112,7 @@ export function useQuery<RR, QR>(
  *
  * @returns Most recently fetched query response
  */
-export function usePoll<RR, QR>(
+export function usePoll<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
   intervalMs: number,
