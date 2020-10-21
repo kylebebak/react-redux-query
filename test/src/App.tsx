@@ -17,7 +17,7 @@ function Component() {
         const res = await request<GetData>('https://httpbin.org/get')
         return { ...res, queryResponse: res.type === 'success' ? res : null }
       },
-      dispatch,
+      { dispatch },
     ).then((res) => {
       if (res.queryResponse) console.log(res.queryResponse.data.origin)
       if (res.type === 'success') console.log(res.data.origin)
@@ -31,8 +31,7 @@ function Component() {
         const res = await request<GetData>('https://httpbin.org/get')
         return { ...res, queryResponse: res.type === 'success' ? res : null }
       },
-      dispatch,
-      { dedupe: true },
+      { dispatch, dedupe: true },
     ).then((res) => {
       console.log('deduped res is undefined:', res === undefined)
     })
@@ -57,7 +56,7 @@ function Component() {
       const res = await request<GetData>('https://httpbin.org/get')
       return { ...res, queryResponse: res.type === 'success' ? res : null }
     },
-    5 * 1000,
+    { intervalMs: 5 * 1000 },
   )
 
   console.log('usePoll', pollRes?.data.origin)

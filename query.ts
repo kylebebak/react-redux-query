@@ -34,10 +34,9 @@ export interface QueryOptions<DD extends boolean = false> {
 export async function query<RR, QR = RR, DD extends boolean = false>(
   key: string,
   fetcher: () => Promise<RawResponse<RR, QR>>,
-  dispatch: Dispatch,
-  options: QueryOptions<DD> = {},
+  options: QueryOptions<DD> & { dispatch: Dispatch },
 ): Promise<RawResponseType<RR, QR, DD>> {
-  const { dedupe = false, dedupeMs = 2000 } = options
+  const { dispatch, dedupe = false, dedupeMs = 2000 } = options
 
   const now = Date.now()
   const fetchState = fetchStateByKey[key]
@@ -72,7 +71,7 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
 export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: { noRefetch?: boolean } & QueryOptions = {},
+  options: QueryOptions & { noRefetch?: boolean } = {},
 ) {
   const { noRefetch = false, ...rest } = options
   const dispatch = useDispatch()
@@ -84,7 +83,7 @@ export function useQuery<RR, QR = RR>(
 
   useEffect(() => {
     if (response && noRefetch) return
-    if (fetcher && key) query(key, fetcher, dispatch, rest)
+    if (fetcher && key) query(key, fetcher, { ...rest, dispatch })
   }, [key]) // eslint-disable-line
 
   return response
@@ -115,8 +114,9 @@ export function useQuery<RR, QR = RR>(
 export function usePoll<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  intervalMs: number,
+  options: QueryOptions & { intervalMs: number },
 ) {
+  const { intervalMs, ...rest } = options
   const dispatch = useDispatch()
 
   const pollId = useRef(0)
@@ -129,7 +129,7 @@ export function usePoll<RR, QR = RR>(
     // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {
       if (pollId.current === 0 || pollId.current !== pid) return
-      await query(key, fetcher, dispatch)
+      await query(key, fetcher, { ...rest, dispatch })
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
