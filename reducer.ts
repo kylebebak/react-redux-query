@@ -2,8 +2,8 @@ import { State } from './query'
 import { Action } from './actions'
 
 /**
- * This branch of state tree stores responses to requests. Key is usually unique
- * per URL path, and should be similar to URL path.
+ * This branch of state tree stores fetcher responses. Key is usually unique per
+ * URL path, and should be similar to URL path.
  *
  * This allows any component to subscribe to changes to data returned by any
  * response. It also allows them to render themselves immediately if the data
@@ -29,7 +29,7 @@ export default function reduce(state: State['query'] = {}, action: Action): Stat
 
       return {
         ...state,
-        [key]: res ? { ...res, receivedMs } : undefined,
+        [key]: res !== null && res !== undefined ? { ...res, receivedMs } : undefined,
       }
     }
 

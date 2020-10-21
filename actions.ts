@@ -5,7 +5,7 @@ export interface Save<QR extends {} = {}> {
   response: QR
 }
 /**
- * Stores response to request. key is usually unique per URL path, and should
+ * Stores fetcher response. key is usually unique per URL path, and should
  * probably be similar to URL path.
  */
 export function save(payload: Save): Action {

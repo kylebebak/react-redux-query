@@ -39,7 +39,7 @@ function Component() {
 
   const res = useQuery('useQueryGet', async () => {
     const res = await request<GetData>('https://httpbin.org/get')
-    return { queryResponse: res.type === 'success' ? res : null }
+    return { ...res, queryResponse: res.type === 'success' ? res : null }
   })
 
   console.log('useQuery', res?.data.origin)

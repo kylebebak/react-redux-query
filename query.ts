@@ -20,14 +20,19 @@ export interface QueryOptions<DD extends boolean = false> {
 }
 
 /**
- * Calls fetcher and awaits raw response. Throws response.queryResponse into
- * query branch under key and returns raw response.
+ * Calls fetcher and awaits raw response. Saves response to query branch under
+ * key and returns response. What is saved to Redux depends on the value of
+ * response.queryResponse:
+ *
+ * - If response.queryResponse isn't set, save raw response
+ * - If response.queryResponse is set, save queryResponse
+ * - If response.queryResponse is set but is undefined or null, don't save anything
  *
  * @param key - Key in query branch under which to store response
- * @param fetcher - Function that returns raw response with queryResponse
- *     property
- * @param dispatch - Dispatch function to send response to store
- * @param options - Query options
+ * @param fetcher - Function that returns raw response with optional
+ *     queryResponse property
+ * @param options - Query options, plus dispatch; Dispatch function to send
+ *     response to store
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
  */
@@ -46,24 +51,31 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
   const response = await fetcher()
   fetchStateByKey[key] = undefined
 
-  const { queryResponse } = response
-  if (queryResponse !== null) dispatch(save({ response: queryResponse || response, key }))
+  // Defensive code; we can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
+  if (response?.hasOwnProperty('queryResponse')) {
+    // If response.queryResponse is set but is null or undefined, don't save anything
+    const { queryResponse } = response
+    if (queryResponse !== null && queryResponse !== undefined) dispatch(save({ response: queryResponse, key }))
+  } else {
+    // If response.queryResponse isn't set, only save response if it's neither null nor undefined
+    if (response !== null && response !== undefined) dispatch(save({ response, key }))
+  }
+
   return response as RawResponseType<RR, QR, DD>
 }
 
 /**
- * Hook calls fetcher and throws response.queryResponse into query branch under
- * key. Immediately returns query response under key, and subscribes to changes
- * in this response.
+ * Hook calls fetcher and saves response to query branch under key. Immediately
+ * returns query response under key, and subscribes to changes in this response.
  *
  * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
  *
  * @param key - Key in query branch under which to store response; passing
  *     null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns raw response with queryResponse
- *     property
- * @param options - query options, plus noRefetch; Don't refetch if there's
+ * @param fetcher - Function that returns raw response with optional
+ *     queryResponse property
+ * @param options - Query options, plus noRefetch; Don't refetch if there's
  *     already response at key
  *
  * @returns Query response
@@ -90,9 +102,8 @@ export function useQuery<RR, QR = RR>(
 }
 
 /**
- * Hook calls fetcher and throws response.queryResponse into query branch under
- * key. Immediately returns query response under key, and subscribes to changes
- * in this response.
+ * Hook calls fetcher and saves response to query branch under key. Immediately
+ * returns query response under key, and subscribes to changes in this response.
  *
  * After fetcher returns, it's called again after intervalMs. Actual polling
  * interval depends on how long fetcher takes to return, which means polling
@@ -106,8 +117,8 @@ export function useQuery<RR, QR = RR>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with queryResponse
  *     property
- * @param intervalMs - Interval between end of fetcher call and next fetcher
- *      call
+ * @param options - Query options, plus intervalMs; Interval between end of
+ *      fetcher call and next fetcher call
  *
  * @returns Most recently fetched query response
  */
