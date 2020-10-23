@@ -31,8 +31,8 @@ export interface QueryOptions<DD extends boolean = false> {
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns raw response with optional
  *     queryResponse property
- * @param options - Query options, plus dispatch; Dispatch function to send
- *     response to store
+ * @param options - Query options, plus:
+ *     dispatch - Dispatch function to send response to store
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
  */
@@ -75,17 +75,18 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with optional
  *     queryResponse property
- * @param options - Query options, plus noRefetch; Don't refetch if there's
- *     already response at key
+ * @param options - Query options, plus:
+ *     noRefetch - Don't refetch if there's already response at key
+ *     refetchKey - Pass in new value to force refetch without changing key
  *
  * @returns Query response
  */
 export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { noRefetch?: boolean } = {},
+  options: QueryOptions & { noRefetch?: boolean, refetchKey?: any } = {},
 ) {
-  const { noRefetch = false, ...rest } = options
+  const { noRefetch = false, refetchKey, ...rest } = options
   const dispatch = useDispatch()
 
   const response = useSelector((state: State) => {
@@ -96,7 +97,7 @@ export function useQuery<RR, QR = RR>(
   useEffect(() => {
     if (response && noRefetch) return
     if (fetcher && key) query(key, fetcher, { ...rest, dispatch })
-  }, [key]) // eslint-disable-line
+  }, [key, refetchKey]) // eslint-disable-line
 
   return response
 }
@@ -117,8 +118,8 @@ export function useQuery<RR, QR = RR>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with queryResponse
  *     property
- * @param options - Query options, plus intervalMs; Interval between end of
- *      fetcher call and next fetcher call
+ * @param options - Query options, plus:
+ *     intervalMs - Interval between end of fetcher call and next fetcher call
  *
  * @returns Most recently fetched query response
  */
