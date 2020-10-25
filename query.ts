@@ -4,8 +4,8 @@ import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export interface State {
-  query: { [key: string]: QueryResponse }
+export interface State<QR extends {} = { [property: string]: unknown }> {
+  query: { [key: string]: QueryResponse<QR> }
 }
 
 const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
@@ -84,7 +84,7 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
 export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { noRefetch?: boolean, refetchKey?: any } = {},
+  options: QueryOptions & { noRefetch?: boolean; refetchKey?: any } = {},
 ) {
   const { noRefetch = false, refetchKey, ...rest } = options
   const dispatch = useDispatch()
