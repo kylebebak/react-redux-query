@@ -1,6 +1,6 @@
 {
   "name": "react-redux-query",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": "Kyle Bebak <kylebebak@gmail.com>",
   "description": "React hooks and functions for SWR-style data fetching, caching and automatic updates, backed by Redux",
   "main": "./index.js",

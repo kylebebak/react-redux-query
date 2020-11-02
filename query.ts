@@ -4,7 +4,7 @@ import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export const ConfigContext = React.createContext({ branchName: 'query' })
+export const ConfigContext = React.createContext<{ branchName?: string; dedupe?: boolean; dedupeMs?: number }>({})
 
 export interface QueryState<QR extends {} = { [property: string]: unknown }> {
   [key: string]: QueryResponse<QR>
@@ -93,7 +93,7 @@ export function useQuery<RR, QR = RR>(
 ) {
   const { noRefetch = false, refetchKey, ...rest } = options
   const dispatch = useDispatch()
-  const { branchName } = useContext(ConfigContext)
+  const { branchName = 'query', ...restConfig } = useContext(ConfigContext)
 
   const response = useSelector((state: State) => {
     if (!key) return
@@ -102,7 +102,7 @@ export function useQuery<RR, QR = RR>(
 
   useEffect(() => {
     if (response && noRefetch) return
-    if (fetcher && key) query(key, fetcher, { ...rest, dispatch })
+    if (fetcher && key) query(key, fetcher, { ...restConfig, ...rest, dispatch })
   }, [key, refetchKey]) // eslint-disable-line
 
   return response
@@ -136,7 +136,7 @@ export function usePoll<RR, QR = RR>(
 ) {
   const { intervalMs, ...rest } = options
   const dispatch = useDispatch()
-  const { branchName } = useContext(ConfigContext)
+  const { branchName = 'query', ...restConfig } = useContext(ConfigContext)
 
   const pollId = useRef(0)
 
@@ -148,7 +148,7 @@ export function usePoll<RR, QR = RR>(
     // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {
       if (pollId.current === 0 || pollId.current !== pid) return
-      await query(key, fetcher, { ...rest, dispatch })
+      await query(key, fetcher, { ...restConfig, ...rest, dispatch })
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
@@ -188,6 +188,6 @@ export function getResponse<QR>(queryState: QueryState, key: string | null | und
  * @returns Query response at key if present
  */
 export function useResponse<QR>(key: string | null | undefined) {
-  const { branchName } = useContext(ConfigContext)
+  const { branchName = 'query' } = useContext(ConfigContext)
   return useSelector((state: State) => getResponse<QR>(state[branchName as 'query'], key))
 }
