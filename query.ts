@@ -1,11 +1,16 @@
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useContext } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export interface State<QR extends {} = { [property: string]: unknown }> {
-  query: { [key: string]: QueryResponse<QR> }
+export const ConfigContext = React.createContext({ branchName: 'query' })
+
+export interface QueryState<QR extends {} = { [property: string]: unknown }> {
+  [key: string]: QueryResponse<QR>
+}
+interface State {
+  query: QueryState
 }
 
 const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
@@ -26,7 +31,7 @@ export interface QueryOptions<DD extends boolean = false> {
  *
  * - If response.queryResponse isn't set, save raw response
  * - If response.queryResponse is set, save queryResponse
- * - If response.queryResponse is set but is undefined or null, don't save anything
+ * - If response.queryResponse is set but is null or undefined, don't save anything
  *
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns raw response with optional
@@ -88,10 +93,11 @@ export function useQuery<RR, QR = RR>(
 ) {
   const { noRefetch = false, refetchKey, ...rest } = options
   const dispatch = useDispatch()
+  const { branchName } = useContext(ConfigContext)
 
   const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as QueryResponse<QR>
+    return state[branchName as 'query'][key] as QueryResponse<QR>
   })
 
   useEffect(() => {
@@ -130,6 +136,7 @@ export function usePoll<RR, QR = RR>(
 ) {
   const { intervalMs, ...rest } = options
   const dispatch = useDispatch()
+  const { branchName } = useContext(ConfigContext)
 
   const pollId = useRef(0)
 
@@ -154,7 +161,7 @@ export function usePoll<RR, QR = RR>(
 
   const response = useSelector((state: State) => {
     if (!key) return
-    return state.query[key] as QueryResponse<QR>
+    return state[branchName as 'query'][key] as QueryResponse<QR>
   })
   return response
 }
@@ -162,14 +169,14 @@ export function usePoll<RR, QR = RR>(
 /**
  * Retrieves a query response from Redux.
  *
- * @param query - Current query branch of state tree
+ * @param queryState - Current query branch of state tree
  * @param key - Key in query branch
  *
  * @returns Query response at key if present
  */
-export function getResponse<QR>(state: State, key: string | null | undefined) {
+export function getResponse<QR>(queryState: QueryState, key: string | null | undefined) {
   if (!key) return
-  return state.query[key] as QueryResponse<QR>
+  return queryState[key] as QueryResponse<QR>
 }
 
 /**
@@ -181,5 +188,6 @@ export function getResponse<QR>(state: State, key: string | null | undefined) {
  * @returns Query response at key if present
  */
 export function useResponse<QR>(key: string | null | undefined) {
-  return useSelector((state: State) => getResponse<QR>(state, key))
+  const { branchName } = useContext(ConfigContext)
+  return useSelector((state: State) => getResponse<QR>(state[branchName as 'query'], key))
 }

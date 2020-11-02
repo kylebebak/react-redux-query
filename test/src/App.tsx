@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { Provider, useDispatch } from 'react-redux'
 import request from 'request-dot-js'
 
-import { query, useQuery, usePoll } from './rrq/query'
+import { query, useQuery, usePoll, ConfigContext } from './rrq/query'
 import store from './store'
 
 type GetData = { origin: string; url: string; headers: { [key: string]: string } }
@@ -67,7 +67,9 @@ function Component() {
 const App = () => {
   return (
     <Provider store={store}>
-      <Component />
+      <ConfigContext.Provider value={{ branchName: 'customBranchName' }}>
+        <Component />
+      </ConfigContext.Provider>
     </Provider>
   )
 }

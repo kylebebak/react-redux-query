@@ -1,4 +1,4 @@
-import { State } from './query'
+import { QueryState } from './query'
 import { Action } from './actions'
 
 /**
@@ -9,7 +9,7 @@ import { Action } from './actions'
  * response. It also allows them to render themselves immediately if the data
  * they need has already been added to the 'query' branch of the state tree.
  */
-export default function reduce(state: State['query'] = {}, action: Action): State['query'] {
+export default function reduce(state: QueryState = {}, action: Action): QueryState {
   const receivedMs = Date.now()
 
   switch (action.type) {
