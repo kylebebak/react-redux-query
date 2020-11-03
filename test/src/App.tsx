@@ -40,7 +40,7 @@ function Component() {
   const res = useQuery('useQueryGet', async () => {
     const res = await request<GetData>('https://httpbin.org/get')
     return { ...res, queryResponse: res.type === 'success' ? res : null }
-  })
+  }, { dedupe: true })
 
   console.log('useQuery', res?.data.origin)
 
@@ -56,7 +56,7 @@ function Component() {
       const res = await request<GetData>('https://httpbin.org/get')
       return { ...res, queryResponse: res.type === 'success' ? res : null }
     },
-    { intervalMs: 5 * 1000 },
+    { intervalMs: 5 * 1000, dedupe: true },
   )
 
   console.log('usePoll', pollRes?.data.origin)

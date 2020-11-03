@@ -6,7 +6,7 @@ import { save } from './actions'
 
 export const ConfigContext = React.createContext<{ branchName?: string; dedupe?: boolean; dedupeMs?: number }>({})
 
-export interface QueryState<QR extends {} = { [property: string]: unknown }> {
+export interface QueryState<QR extends {} = any> {
   [key: string]: QueryResponse<QR>
 }
 interface State {
@@ -17,7 +17,7 @@ const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
 
 export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse?: QR | null }
 export type QueryResponse<QR extends {} = {}> = (QR & { receivedMs: number }) | undefined
-type RawResponseType<RR, QR, DD> = DD extends false ? RawResponse<RR, QR> : RawResponse<RR, QR> | undefined
+export type RawResponseType<RR, QR, DD> = DD extends false ? RawResponse<RR, QR> : RawResponse<RR, QR> | undefined
 
 export interface QueryOptions<DD extends boolean = false> {
   dedupe?: DD
@@ -86,10 +86,10 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
  *
  * @returns Query response
  */
-export function useQuery<RR, QR = RR>(
+export function useQuery<RR, QR = RR, DD extends boolean = false>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { noRefetch?: boolean; refetchKey?: any } = {},
+  options: QueryOptions<DD> & { noRefetch?: boolean; refetchKey?: any } = {},
 ) {
   const { noRefetch = false, refetchKey, ...rest } = options
   const dispatch = useDispatch()
@@ -129,10 +129,10 @@ export function useQuery<RR, QR = RR>(
  *
  * @returns Most recently fetched query response
  */
-export function usePoll<RR, QR = RR>(
+export function usePoll<RR, QR = RR, DD extends boolean = false>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { intervalMs: number },
+  options: QueryOptions<DD> & { intervalMs: number },
 ) {
   const { intervalMs, ...rest } = options
   const dispatch = useDispatch()
