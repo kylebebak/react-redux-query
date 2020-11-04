@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useContext } from 'react'
+import { createContext, useEffect, useRef, useContext } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export const ConfigContext = React.createContext<{ branchName?: string; dedupe?: boolean; dedupeMs?: number }>({})
+export const ConfigContext = createContext<{ branchName?: string; dedupe?: boolean; dedupeMs?: number }>({})
 
 export interface QueryState<QR extends {} = any> {
   [key: string]: QueryResponse<QR>
