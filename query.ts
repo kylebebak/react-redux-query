@@ -30,14 +30,19 @@ export interface QueryOptions<DD extends boolean = false> {
  * response.queryResponse:
  *
  * - If response.queryResponse isn't set, save raw response
+ * - If response.queryResponse isn't set, and raw response is null or undefined,
+ *     don't save anything
  * - If response.queryResponse is set, save queryResponse
- * - If response.queryResponse is set but is null or undefined, don't save anything
+ * - If response.queryResponse is set but is null or undefined, don't save
+ *     anything
  *
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns raw response with optional
  *     queryResponse property
- * @param options - Query options, plus:
+ * @param options:
  *     dispatch - Dispatch function to send response to store
+ *     dedupe - Don't call fetcher if there's another request in flight for key
+ *     dedupeMs - If dedupe is true, dedupe behavior active for this many ms
  *
  * @returns Raw response, or undefined if fetcher call gets deduped
  */
@@ -56,7 +61,7 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
   const response = await fetcher()
   fetchStateByKey[key] = undefined
 
-  // Defensive code; we can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
+  // Defensive code; can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
   if (response?.hasOwnProperty('queryResponse')) {
     // If response.queryResponse is set but is null or undefined, don't save anything
     const { queryResponse } = response
@@ -80,8 +85,10 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with optional
  *     queryResponse property
- * @param options - Query options, plus:
+ * @param options - Dedupe options, plus:
  *     noRefetch - Don't refetch if there's already response at key
+ *     noRefetchMs - If noRefetch is true, noRefetch behavior active for this
+ *         many ms (forever by default)
  *     refetchKey - Pass in new value to force refetch without changing key
  *
  * @returns Query response
@@ -89,9 +96,9 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
 export function useQuery<RR, QR = RR, DD extends boolean = false>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions<DD> & { noRefetch?: boolean; refetchKey?: any } = {},
+  options: QueryOptions<DD> & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { noRefetch = false, refetchKey, ...rest } = options
+  const { noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const dispatch = useDispatch()
   const { branchName = 'query', ...restConfig } = useContext(ConfigContext)
 
@@ -101,7 +108,12 @@ export function useQuery<RR, QR = RR, DD extends boolean = false>(
   })
 
   useEffect(() => {
-    if (response && noRefetch) return
+    if (response && noRefetch) {
+      // Defensive code; can't be sure receivedMs is a number (user could use their own reducer)
+      if (noRefetchMs <= 0 || typeof response.receivedMs !== 'number') return
+      // User specified a positive value for noRefetchMs; determine if we should we refetch or not
+      if (Date.now() - response.receivedMs <= noRefetchMs) return
+    }
     if (fetcher && key) query(key, fetcher, { ...restConfig, ...rest, dispatch })
   }, [key, refetchKey]) // eslint-disable-line
 
@@ -124,7 +136,7 @@ export function useQuery<RR, QR = RR, DD extends boolean = false>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with queryResponse
  *     property
- * @param options - Query options, plus:
+ * @param options - Dedupe options, plus:
  *     intervalMs - Interval between end of fetcher call and next fetcher call
  *
  * @returns Most recently fetched query response

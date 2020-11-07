@@ -9932,10 +9932,10 @@ repeat-string@^1.6.1:
   resolved "https://registry.yarnpkg.com/repeat-string/-/repeat-string-1.6.1.tgz#8dcae470e1c88abc2d600fff4a776286da75e637"
   integrity sha1-jcrkcOHIirwtYA//Sndihtp15jc=
 
-request-dot-js@^3.2.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/request-dot-js/-/request-dot-js-3.2.0.tgz#9fd7c39fde229254db7aad515aaa7b32642601c3"
-  integrity sha512-avVLZ8Is3efvRYYnZqNqDc2f8S5oxqzQxbzjpGf2mAwNX/i9cKY4J46qVSS2f645GpHTh6VVu7zJOKTBD1+50Q==
+request-dot-js@^3.2.2:
+  version "3.2.2"
+  resolved "https://registry.yarnpkg.com/request-dot-js/-/request-dot-js-3.2.2.tgz#9241e72f9781f5f15e27353f2282a146ece5e8b8"
+  integrity sha512-fj/EJOkvGe6V7kpY+ytMw0eE3mhfXU1LhjyImiNThiieJE6F4NNvNzV5OdqKwqvU7Op8akEtPDiRMMwwJ7fkyQ==
 
 request-promise-core@1.1.4:
   version "1.1.4"

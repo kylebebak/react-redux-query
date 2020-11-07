@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Provider, useDispatch } from 'react-redux'
 import request from 'request-dot-js'
 
@@ -9,6 +9,11 @@ type GetData = { origin: string; url: string; headers: { [key: string]: string }
 
 function Component() {
   const dispatch = useDispatch()
+  const [timePassed, setTimePassed] = useState(false)
+
+  useEffect(() => {
+    setTimeout(() => setTimePassed(true), 2000)
+  })
 
   useEffect(() => {
     query(
@@ -42,13 +47,23 @@ function Component() {
     return { ...res, queryResponse: res.type === 'success' ? res : null }
   }, { dedupe: true })
 
-  console.log('useQuery', res?.data.origin)
+  console.log('useQueryGet', res?.data.origin)
 
-  const noQueryRes = useQuery('useNoQuery', async () => {
+  const noQueryRes = useQuery('useQueryNoQueryResponse', async () => {
     return await request<GetData>('https://httpbin.org/get')
   })
 
   console.log(noQueryRes?.type)
+
+  useQuery(timePassed ? 'useQueryGet' : null, async () => {
+    console.log('refetch not called, not logged')
+    return { queryResponse: null }
+  }, { noRefetch: true })
+
+  useQuery(timePassed ? 'useQueryGet' : null, async () => {
+    console.log('refetch called, response not overwritten')
+    return { queryResponse: null }
+  }, { noRefetch: true, noRefetchMs: 100 })
 
   const pollRes = usePoll(
     'usePollGet',
