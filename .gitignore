@@ -1,7 +1,7 @@
 # dependencies
 /node_modules
-/test/node_modules
-/test/src/rrq
+/test_app/node_modules
+/test_app/src/rrq
 
 # jest
 /coverage
@@ -17,7 +17,7 @@ test.js
 
 # production
 /build
-/test/build
+/test_app/build
 
 # misc
 .DS_Store
