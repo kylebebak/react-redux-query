@@ -13,7 +13,7 @@ export default function reduce(state: QueryState = {}, action: Action): QuerySta
   const receivedMs = Date.now()
 
   switch (action.type) {
-    case 'SAVE': {
+    case 'REACT_REDUX_QUERY_SAVE': {
       const { response, key } = action.payload
 
       return {
@@ -22,14 +22,19 @@ export default function reduce(state: QueryState = {}, action: Action): QuerySta
       }
     }
 
-    case 'UPDATE': {
+    case 'REACT_REDUX_QUERY_UPDATE': {
       const { updater, key } = action.payload
 
       const res = updater(state[key])
+      if (res === undefined) return state
+      if (res === null) {
+        const { [key]: _, ...rest } = state
+        return rest
+      }
 
       return {
         ...state,
-        [key]: res !== null && res !== undefined ? { ...res, receivedMs } : undefined,
+        [key]: { ...res, receivedMs },
       }
     }
 
