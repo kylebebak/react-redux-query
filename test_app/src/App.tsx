@@ -24,8 +24,8 @@ function Component() {
       },
       { dispatch },
     ).then((res) => {
-      if (res.queryResponse) console.log(res.queryResponse.data.origin)
-      if (res.type === 'success') console.log(res.data.origin)
+      if (res?.queryResponse) console.log(res.queryResponse.data.origin)
+      if (res?.type === 'success') console.log(res.data.origin)
     })
   }, [dispatch])
 
@@ -38,7 +38,7 @@ function Component() {
       },
       { dispatch, dedupe: true },
     ).then((res) => {
-      console.log('deduped res is undefined:', res === undefined)
+      console.log('fetcher call deduped, res is undefined:', res === undefined)
     })
   }, [dispatch])
 
@@ -64,6 +64,19 @@ function Component() {
     console.log('refetch called, response not overwritten')
     return { queryResponse: null }
   }, { noRefetch: true, noRefetchMs: 100 })
+
+  useEffect(() => {
+    query(
+      'get',
+      async () => {
+        // @ts-ignore
+        return ({}).b.c as number
+      },
+      { dispatch },
+    ).then((res) => {
+      console.log('fetcher error caught, res is undefined:', res === undefined)
+    })
+  }, [dispatch])
 
   const pollRes = usePoll(
     'usePollGet',

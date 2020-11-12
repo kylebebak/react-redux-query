@@ -4,7 +4,12 @@ import { Dispatch } from 'redux'
 
 import { save } from './actions'
 
-export const ConfigContext = createContext<{ branchName?: string; dedupe?: boolean; dedupeMs?: number }>({})
+export const ConfigContext = createContext<{
+  branchName?: string
+  dedupe?: boolean
+  dedupeMs?: number
+  catchError?: boolean
+}>({})
 
 export interface QueryState<QR extends {} = any> {
   [key: string]: QueryResponse<QR>
@@ -17,11 +22,11 @@ const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
 
 export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse?: QR | null }
 export type QueryResponse<QR extends {} = {}> = (QR & { receivedMs: number }) | undefined
-export type RawResponseType<RR, QR, DD> = DD extends false ? RawResponse<RR, QR> : RawResponse<RR, QR> | undefined
 
-export interface QueryOptions<DD extends boolean = false> {
-  dedupe?: DD
+export interface QueryOptions {
+  dedupe?: boolean
   dedupeMs?: number
+  catchError?: boolean
 }
 
 /**
@@ -44,22 +49,31 @@ export interface QueryOptions<DD extends boolean = false> {
  *     dedupe - Don't call fetcher if there's another request in flight for key
  *     dedupeMs - If dedupe is true, dedupe behavior active for this many ms
  *
- * @returns Raw response, or undefined if fetcher call gets deduped
+ * @returns Raw response, or undefined if fetcher call gets deduped, or
+ *     undefined if fetcher throws error
  */
-export async function query<RR, QR = RR, DD extends boolean = false>(
+export async function query<RR, QR = RR>(
   key: string,
   fetcher: () => Promise<RawResponse<RR, QR>>,
-  options: QueryOptions<DD> & { dispatch: Dispatch },
-): Promise<RawResponseType<RR, QR, DD>> {
-  const { dispatch, dedupe = false, dedupeMs = 2000 } = options
+  options: QueryOptions & { dispatch: Dispatch },
+): Promise<RawResponse<RR, QR> | undefined> {
+  const { dispatch, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
   const now = Date.now()
   const fetchState = fetchStateByKey[key]
-  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined as RawResponseType<RR, QR, DD>
+  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined
+
+  let response: RawResponse<RR, QR> | undefined = undefined
 
   fetchStateByKey[key] = { sentMs: now }
-  const response = await fetcher()
-  fetchStateByKey[key] = undefined
+  try {
+    response = await fetcher()
+  } catch (e) {
+    if (catchError) return undefined
+    else throw e
+  } finally {
+    fetchStateByKey[key] = undefined
+  }
 
   // Defensive code; can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
   if (response?.hasOwnProperty('queryResponse')) {
@@ -71,7 +85,7 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
     if (response !== null && response !== undefined) dispatch(save({ response, key }))
   }
 
-  return response as RawResponseType<RR, QR, DD>
+  return response
 }
 
 /**
@@ -85,7 +99,7 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with optional
  *     queryResponse property
- * @param options - Dedupe options, plus:
+ * @param options - Query options options, plus:
  *     noRefetch - Don't refetch if there's already response at key
  *     noRefetchMs - If noRefetch is true, noRefetch behavior active for this
  *         many ms (forever by default)
@@ -93,10 +107,10 @@ export async function query<RR, QR = RR, DD extends boolean = false>(
  *
  * @returns Query response
  */
-export function useQuery<RR, QR = RR, DD extends boolean = false>(
+export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions<DD> & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+  options: QueryOptions & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
   const { noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const dispatch = useDispatch()
@@ -136,15 +150,15 @@ export function useQuery<RR, QR = RR, DD extends boolean = false>(
  *     null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns raw response with queryResponse
  *     property
- * @param options - Dedupe options, plus:
+ * @param options - Query options, plus:
  *     intervalMs - Interval between end of fetcher call and next fetcher call
  *
  * @returns Most recently fetched query response
  */
-export function usePoll<RR, QR = RR, DD extends boolean = false>(
+export function usePoll<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions<DD> & { intervalMs: number },
+  options: QueryOptions & { intervalMs: number },
 ) {
   const { intervalMs, ...rest } = options
   const dispatch = useDispatch()
