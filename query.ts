@@ -52,18 +52,18 @@ export interface QueryOptions {
  * @returns Raw response, or undefined if fetcher call gets deduped, or
  *     undefined if fetcher throws error
  */
-export async function query<RR, QR = RR>(
+export async function query<RR extends { queryResponse?: {} | null } | {} | null | undefined>(
   key: string,
-  fetcher: () => Promise<RawResponse<RR, QR>>,
+  fetcher: () => Promise<RR>,
   options: QueryOptions & { dispatch: Dispatch },
-): Promise<RawResponse<RR, QR> | undefined> {
+) {
   const { dispatch, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
   const now = Date.now()
   const fetchState = fetchStateByKey[key]
   if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined
 
-  let response: RawResponse<RR, QR> | undefined = undefined
+  let response: RR
 
   fetchStateByKey[key] = { sentMs: now }
   try {
@@ -78,11 +78,11 @@ export async function query<RR, QR = RR>(
   // Defensive code; can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
   if (response?.hasOwnProperty('queryResponse')) {
     // If response.queryResponse is set but is null or undefined, don't save anything
-    const { queryResponse } = response
+    const { queryResponse } = response as { queryResponse?: {} | null }
     if (queryResponse !== null && queryResponse !== undefined) dispatch(save({ response: queryResponse, key }))
   } else {
     // If response.queryResponse isn't set, only save response if it's neither null nor undefined
-    if (response !== null && response !== undefined) dispatch(save({ response, key }))
+    if (response !== null && response !== undefined) dispatch(save({ response: response as {}, key }))
   }
 
   return response

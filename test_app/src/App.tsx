@@ -56,12 +56,12 @@ function Component() {
   console.log(noQueryRes?.type)
 
   useQuery(timePassed ? 'useQueryGet' : null, async () => {
-    console.log('refetch not called, not logged')
+    console.log('fetcher not called, not logged')
     return { queryResponse: null }
   }, { noRefetch: true })
 
   useQuery(timePassed ? 'useQueryGet' : null, async () => {
-    console.log('refetch called, response not overwritten')
+    console.log('fetcher called, response not overwritten')
     return { queryResponse: null }
   }, { noRefetch: true, noRefetchMs: 100 })
 
