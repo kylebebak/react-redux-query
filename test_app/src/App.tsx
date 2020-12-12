@@ -42,35 +42,47 @@ function Component() {
     })
   }, [dispatch])
 
-  const res = useQuery('useQueryGet', async () => {
-    const res = await request<GetData>('https://httpbin.org/get')
-    return { ...res, queryResponse: res.type === 'success' ? res : null }
-  }, { dedupe: true })
+  const { response: res } = useQuery(
+    'useQueryGet',
+    async () => {
+      const res = await request<GetData>('https://httpbin.org/get')
+      return { ...res, queryResponse: res.type === 'success' ? res : null }
+    },
+    { dedupe: true },
+  )
 
   console.log('useQueryGet', res?.data.origin)
 
-  const noQueryRes = useQuery('useQueryNoQueryResponse', async () => {
+  const { response: noQueryRes } = useQuery('useQueryNoQueryResponse', async () => {
     return await request<GetData>('https://httpbin.org/get')
   })
 
   console.log(noQueryRes?.type)
 
-  useQuery(timePassed ? 'useQueryGet' : null, async () => {
-    console.log('fetcher not called, not logged')
-    return { queryResponse: null }
-  }, { noRefetch: true })
+  useQuery(
+    timePassed ? 'useQueryGet' : null,
+    async () => {
+      console.log('fetcher not called, not logged')
+      return { queryResponse: null }
+    },
+    { noRefetch: true },
+  )
 
-  useQuery(timePassed ? 'useQueryGet' : null, async () => {
-    console.log('fetcher called, response not overwritten')
-    return { queryResponse: null }
-  }, { noRefetch: true, noRefetchMs: 100 })
+  useQuery(
+    timePassed ? 'useQueryGet' : null,
+    async () => {
+      console.log('fetcher called, response not overwritten')
+      return { queryResponse: null }
+    },
+    { noRefetch: true, noRefetchMs: 100 },
+  )
 
   useEffect(() => {
     query(
       'get',
       async () => {
         // @ts-ignore
-        return ({}).b.c as number
+        return {}.b.c as number
       },
       { dispatch },
     ).then((res) => {
@@ -78,7 +90,7 @@ function Component() {
     })
   }, [dispatch])
 
-  const pollRes = usePoll(
+  const { response: pollRes, responseMs: pollResMs } = usePoll(
     'usePollGet',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
@@ -87,7 +99,7 @@ function Component() {
     { intervalMs: 5 * 1000, dedupe: true },
   )
 
-  console.log('usePoll', pollRes?.data.origin)
+  console.log({ pollRes: pollRes?.data.origin, pollResMs })
 
   return null
 }

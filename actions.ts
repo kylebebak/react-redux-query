@@ -1,4 +1,4 @@
-import { QueryResponse } from './query'
+import { QueryData } from './query'
 
 export interface Save {
   key: string
@@ -10,29 +10,48 @@ export interface Save {
  */
 export function save(payload: Save): Action {
   return {
-    type: 'REACT_REDUX_QUERY_SAVE',
+    type: 'REACT_REDUX_QUERY_SAVE_RESPONSE',
     payload,
   }
 }
 
 export interface Update<QR> {
   key: string
-  updater: (response: QueryResponse<QR>) => QR | undefined | null
+  updater: (response: QR | undefined) => QR | undefined | null
 }
 /**
  * Like save, but takes an updater function, which receives the response at key
  * and must return a response, undefined, or null.
  *
  * - If updater returns undefined, don't modify response at key
- * - If updater returns null, remove response at key from query branch
+ * - If updater returns null, remove data at key from query branch
  */
 export function update<QR extends {} = any>(payload: Update<QR>): Action {
   return {
-    type: 'REACT_REDUX_QUERY_UPDATE',
+    type: 'REACT_REDUX_QUERY_UPDATE_RESPONSE',
+    payload,
+  }
+}
+
+export interface UpdateData {
+  key: string
+  data: Partial<QueryData>
+}
+/**
+ * Update query data. key is usually unique per URL path, and should
+ * probably be similar to URL path.
+ *
+ * This is meant for internal use; data contains query metadata that client code
+ * should probably not update.
+ */
+export function updateData(payload: UpdateData): Action {
+  return {
+    type: 'REACT_REDUX_QUERY_UPDATE_DATA',
     payload,
   }
 }
 
 export type Action =
-  | { type: 'REACT_REDUX_QUERY_SAVE'; payload: Save }
-  | { type: 'REACT_REDUX_QUERY_UPDATE'; payload: Update<any> }
+  | { type: 'REACT_REDUX_QUERY_SAVE_RESPONSE'; payload: Save }
+  | { type: 'REACT_REDUX_QUERY_UPDATE_RESPONSE'; payload: Update<any> }
+  | { type: 'REACT_REDUX_QUERY_UPDATE_DATA'; payload: UpdateData }

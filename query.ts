@@ -1,8 +1,10 @@
 import { createContext, useEffect, useRef, useContext } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector, useDispatch, shallowEqual } from 'react-redux'
 import { Dispatch } from 'redux'
 
-import { save } from './actions'
+import { updateData } from './actions'
+
+const fetchStateByKey: { [key: string]: { fetchMs: number } | undefined } = {}
 
 export const ConfigContext = createContext<{
   branchName?: string
@@ -11,17 +13,26 @@ export const ConfigContext = createContext<{
   catchError?: boolean
 }>({})
 
-export interface QueryState<QR extends {} = any> {
-  [key: string]: QueryResponse<QR>
-}
-interface State {
-  query: QueryState
+interface State<QR extends {} = {}, ER = {}> {
+  query: QueryState<QR, ER>
 }
 
-const fetchStateByKey: { [key: string]: { sentMs: number } | undefined } = {}
+export interface QueryState<QR extends {} = any, ER = {}> {
+  [key: string]: QueryData<QR, ER> | undefined
+}
+
+export type QueryData<QR extends {} = {}, ER = {}> = {
+  response?: QR
+  responseMs?: number
+  error?: ER
+  errorMs?: number
+  fetchMs?: number
+  saveMs?: number
+}
+
+type DataKey = Exclude<keyof QueryData, 'response' | 'responseMs'>
 
 export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse?: QR | null }
-export type QueryResponse<QR extends {} = {}> = (QR & { receivedMs: number }) | undefined
 
 export interface QueryOptions {
   dedupe?: boolean
@@ -59,30 +70,41 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
 ) {
   const { dispatch, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
-  const now = Date.now()
+  const before = Date.now()
   const fetchState = fetchStateByKey[key]
-  if (dedupe && fetchState && now - fetchState.sentMs <= dedupeMs) return undefined
+  if (dedupe && fetchState && before - fetchState.fetchMs <= dedupeMs) return
 
   let response: RR
 
-  fetchStateByKey[key] = { sentMs: now }
+  fetchStateByKey[key] = { fetchMs: before }
+  dispatch(updateData({ key, data: { fetchMs: before } }))
+
   try {
     response = await fetcher()
   } catch (e) {
-    if (catchError) return undefined
-    else throw e
+    if (catchError) {
+      // If catchError is true, save error
+      dispatch(updateData({ key, data: { error: e, errorMs: Date.now(), fetchMs: undefined } }))
+      return
+    } else throw e
   } finally {
     fetchStateByKey[key] = undefined
   }
 
-  // Defensive code; can't rely on TypeScript to ensure response is defined (not all users use TypeScript...)
+  const after = Date.now()
+
   if (response?.hasOwnProperty('queryResponse')) {
-    // If response.queryResponse is set but is null or undefined, don't save anything
     const { queryResponse } = response as { queryResponse?: {} | null }
-    if (queryResponse !== null && queryResponse !== undefined) dispatch(save({ response: queryResponse, key }))
-  } else {
+    if (queryResponse !== null && queryResponse !== undefined) {
+      // If response.queryResponse is set and is neither null nor undefined, save it as response
+      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: after, fetchMs: undefined } }))
+    } else {
+      // If response.queryResponse is set but is null or undefined, save response as error
+      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: after, fetchMs: undefined } }))
+    }
+  } else if (response !== null && response !== undefined) {
     // If response.queryResponse isn't set, only save response if it's neither null nor undefined
-    if (response !== null && response !== undefined) dispatch(save({ response: response as {}, key }))
+    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: after, fetchMs: undefined } }))
   }
 
   return response
@@ -90,7 +112,7 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
 
 /**
  * Hook calls fetcher and saves response to query branch under key. Immediately
- * returns query response under key, and subscribes to changes in this response.
+ * returns query data under key, and subscribes to changes in this data.
  *
  * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
@@ -105,38 +127,35 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
  *         many ms (forever by default)
  *     refetchKey - Pass in new value to force refetch without changing key
  *
- * @returns Query response
+ * @returns Query data
  */
 export function useQuery<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+  options: QueryOptions & { dataKeys?: DataKey[]; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
+  const { dataKeys = [], noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const dispatch = useDispatch()
-  const { branchName = 'query', ...restConfig } = useContext(ConfigContext)
+  const config = useContext(ConfigContext)
 
-  const response = useSelector((state: State) => {
-    if (!key) return
-    return state[branchName as 'query'][key] as QueryResponse<QR>
-  })
+  const data = useData<QR>(key, ...dataKeys)
 
   useEffect(() => {
-    if (response && noRefetch) {
-      // Defensive code; can't be sure receivedMs is a number (user could use their own reducer)
-      if (noRefetchMs <= 0 || typeof response.receivedMs !== 'number') return
+    if (data.response && noRefetch) {
+      // Defensive code; can't be sure responseMs is a number (user could use their own reducer)
+      if (noRefetchMs <= 0 || typeof data.responseMs !== 'number') return
       // User specified a positive value for noRefetchMs; determine if we should we refetch or not
-      if (Date.now() - response.receivedMs <= noRefetchMs) return
+      if (Date.now() - data.responseMs <= noRefetchMs) return
     }
-    if (fetcher && key) query(key, fetcher, { ...restConfig, ...rest, dispatch })
+    if (fetcher && key) query(key, fetcher, { ...config, ...rest, dispatch })
   }, [key, refetchKey]) // eslint-disable-line
 
-  return response
+  return data
 }
 
 /**
  * Hook calls fetcher and saves response to query branch under key. Immediately
- * returns query response under key, and subscribes to changes in this response.
+ * returns query data under key, and subscribes to changes in this data.
  *
  * After fetcher returns, it's called again after intervalMs. Actual polling
  * interval depends on how long fetcher takes to return, which means polling
@@ -153,16 +172,16 @@ export function useQuery<RR, QR = RR>(
  * @param options - Query options, plus:
  *     intervalMs - Interval between end of fetcher call and next fetcher call
  *
- * @returns Most recently fetched query response
+ * @returns Query data
  */
 export function usePoll<RR, QR = RR>(
   key: string | null | undefined,
   fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
-  options: QueryOptions & { intervalMs: number },
+  options: QueryOptions & { dataKeys?: DataKey[]; intervalMs: number },
 ) {
-  const { intervalMs, ...rest } = options
+  const { dataKeys = [], intervalMs, ...rest } = options
   const dispatch = useDispatch()
-  const { branchName = 'query', ...restConfig } = useContext(ConfigContext)
+  const config = useContext(ConfigContext)
 
   const pollId = useRef(0)
 
@@ -174,7 +193,7 @@ export function usePoll<RR, QR = RR>(
     // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {
       if (pollId.current === 0 || pollId.current !== pid) return
-      await query(key, fetcher, { ...restConfig, ...rest, dispatch })
+      await query(key, fetcher, { ...config, ...rest, dispatch })
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
@@ -185,35 +204,52 @@ export function usePoll<RR, QR = RR>(
     }
   }, [key, intervalMs]) // eslint-disable-line
 
-  const response = useSelector((state: State) => {
-    if (!key) return
-    return state[branchName as 'query'][key] as QueryResponse<QR>
-  })
-  return response
+  return useData<QR>(key, ...dataKeys)
 }
 
 /**
- * Retrieves a query response from Redux.
+ * Retrieves query data from Redux. Includes only response and responseMs keys
+ * by default, unless additional dataKeys supplied.
  *
  * @param queryState - Current query branch of state tree
  * @param key - Key in query branch
+ * @param dataKeys - Keys in query data
  *
- * @returns Query response at key if present
+ * @returns Query data at key if present, or object with subset of properties
+ *     specified by dataKeys
  */
-export function getResponse<QR>(queryState: QueryState, key: string | null | undefined) {
+export function getData<QR>(queryState: QueryState<QR>, key: string | null | undefined, ...dataKeys: DataKey[]) {
   if (!key) return
-  return queryState[key] as QueryResponse<QR>
+  const data = queryState[key]
+  if (!data) return data
+
+  const partialData: QueryData<QR> = {
+    response: data.response,
+    responseMs: data.responseMs,
+    error: undefined,
+    errorMs: undefined,
+    fetchMs: undefined,
+    saveMs: undefined,
+  }
+  // @ts-ignore
+  for (const dataKey of dataKeys) partialData[dataKey] = data[dataKey]
+  return partialData
 }
 
 /**
- * Hook retrieves a query response from Redux, and subscribes to changes in
- * response.
+ * Hook retrieves query data from Redux, and subscribes to changes in object.
+ * Includes only response and responseMs keys by default, and subscribes to
+ * changes in these keys only, unless additional dataKeys supplied.
  *
  * @param key - Key in query branch
+ * @param dataKeys - Keys in query data
  *
- * @returns Query response at key if present
+ * @returns Query data at key if present, or object with subset of properties
+ *     specified by dataKeys
  */
-export function useResponse<QR>(key: string | null | undefined) {
+export function useData<QR>(key: string | null | undefined, ...dataKeys: DataKey[]) {
   const { branchName = 'query' } = useContext(ConfigContext)
-  return useSelector((state: State) => getResponse<QR>(state[branchName as 'query'], key))
+  return (
+    useSelector((state: State<QR>) => getData<QR>(state[branchName as 'query'], key, ...dataKeys), shallowEqual) || {}
+  )
 }
