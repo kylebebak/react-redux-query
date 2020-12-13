@@ -11,7 +11,7 @@ import { Action } from './actions'
  * 'query' branch of the state tree.
  */
 export default function reduce(state: QueryState = {}, action: Action): QueryState {
-  const saveMs = Date.now()
+  const responseMs = Date.now()
 
   switch (action.type) {
     case 'REACT_REDUX_QUERY_SAVE_RESPONSE': {
@@ -19,7 +19,7 @@ export default function reduce(state: QueryState = {}, action: Action): QuerySta
 
       return {
         ...state,
-        [key]: { ...state[key], response: { ...response }, saveMs },
+        [key]: { ...state[key], response: { ...response }, responseMs },
       }
     }
 
@@ -35,7 +35,7 @@ export default function reduce(state: QueryState = {}, action: Action): QuerySta
 
       return {
         ...state,
-        [key]: { ...state[key], response: { ...res }, saveMs },
+        [key]: { ...state[key], response: { ...res }, responseMs },
       }
     }
 
@@ -44,7 +44,7 @@ export default function reduce(state: QueryState = {}, action: Action): QuerySta
 
       return {
         ...state,
-        [key]: { ...state[key], ...data, saveMs },
+        [key]: { ...state[key], ...data },
       }
     }
 

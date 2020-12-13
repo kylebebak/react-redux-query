@@ -27,7 +27,6 @@ export type QueryData<QR extends {} = {}, ER = {}> = {
   error?: ER
   errorMs?: number
   fetchMs?: number
-  saveMs?: number
 }
 
 type DataKey = Exclude<keyof QueryData, 'response' | 'responseMs'>
@@ -84,11 +83,9 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
   } catch (e) {
     if (catchError) {
       // If catchError is true, save error
-      dispatch(updateData({ key, data: { error: e, errorMs: Date.now(), fetchMs: undefined } }))
+      dispatch(updateData({ key, data: { error: e, errorMs: Date.now() } }))
       return
     } else throw e
-  } finally {
-    fetchStateByKey[key] = undefined
   }
 
   const after = Date.now()
@@ -97,14 +94,14 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
     const { queryResponse } = response as { queryResponse?: {} | null }
     if (queryResponse !== null && queryResponse !== undefined) {
       // If response.queryResponse is set and is neither null nor undefined, save it as response
-      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: after, fetchMs: undefined } }))
+      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: after } }))
     } else {
       // If response.queryResponse is set but is null or undefined, save response as error
-      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: after, fetchMs: undefined } }))
+      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: after } }))
     }
   } else if (response !== null && response !== undefined) {
     // If response.queryResponse isn't set, only save response if it's neither null nor undefined
-    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: after, fetchMs: undefined } }))
+    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: after } }))
   }
 
   return response
@@ -229,7 +226,6 @@ export function getData<QR>(queryState: QueryState<QR>, key: string | null | und
     error: undefined,
     errorMs: undefined,
     fetchMs: undefined,
-    saveMs: undefined,
   }
   // @ts-ignore
   for (const dataKey of dataKeys) partialData[dataKey] = data[dataKey]
