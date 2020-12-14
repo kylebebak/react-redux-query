@@ -4,7 +4,9 @@ import { Dispatch } from 'redux'
 
 import { updateData } from './actions'
 
-const fetchStateByKey: { [key: string]: { fetchMs: number } | undefined } = {}
+const fetchStateByKey: {
+  [key: string]: { fetchMs: number; inFlight: { id: string; fetchMs: number }[] } | undefined
+} = {}
 
 export const ConfigContext = createContext<{
   branchName?: string
@@ -27,6 +29,7 @@ export type QueryData<QR extends {} = {}, ER = {}> = {
   error?: ER
   errorMs?: number
   fetchMs?: number
+  inFlight?: { id: string; fetchMs: number }[]
 }
 
 type DataKey = Exclude<keyof QueryData, 'response' | 'responseMs'>
@@ -56,7 +59,7 @@ export interface QueryOptions {
  *     queryResponse property
  * @param options:
  *     dispatch - Dispatch function to send response to store
- *     dedupe - Don't call fetcher if there's another request in flight for key
+ *     dedupe - Don't call fetcher if another request was recently sent for key
  *     dedupeMs - If dedupe is true, dedupe behavior active for this many ms
  *
  * @returns Raw response, or undefined if fetcher call gets deduped, or
@@ -69,39 +72,62 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
 ) {
   const { dispatch, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
+  // Bail out if dedupe is true and another request was recently sent for key
   const before = Date.now()
   const fetchState = fetchStateByKey[key]
   if (dedupe && fetchState && before - fetchState.fetchMs <= dedupeMs) return
 
-  let response: RR
+  const fetchMs = before
+  let inFlight = fetchStateByKey[key]?.inFlight || []
 
-  fetchStateByKey[key] = { fetchMs: before }
-  dispatch(updateData({ key, data: { fetchMs: before } }))
+  // Create unique id for in-flight request, and add it to inFlight array
+  let counter = 0
+  let id = ''
+  while (true) {
+    id = `${fetchMs}-${counter}`
+    if (!inFlight.find(data => data.id === id)) {
+      inFlight.push({ id, fetchMs })
+      break
+    }
+    counter += 1
+  }
 
+  // Notify client that fetcher will be called
+  fetchStateByKey[key] = { fetchMs, inFlight }
+  dispatch(updateData({ key, data: { fetchMs, inFlight } }))
+
+  // Call fetcher
+  let response: RR = undefined as RR
+  let error: undefined | {}
   try {
     response = await fetcher()
   } catch (e) {
-    if (catchError) {
-      // If catchError is true, save error
-      dispatch(updateData({ key, data: { error: e, errorMs: Date.now() } }))
-      return
-    } else throw e
+    error = e || {}
   }
 
-  const after = Date.now()
+  // Remove request from inFlight array
+  const afterMs = Date.now()
+  inFlight = (fetchStateByKey[key]?.inFlight || []).filter(data => data.id !== id)
+
+  // If error was thrown, notify client and bail out
+  if (error) {
+    dispatch(updateData({ key, data: { error, errorMs: afterMs, inFlight } }))
+    if (catchError) return
+    throw error
+  }
 
   if (response?.hasOwnProperty('queryResponse')) {
     const { queryResponse } = response as { queryResponse?: {} | null }
     if (queryResponse !== null && queryResponse !== undefined) {
       // If response.queryResponse is set and is neither null nor undefined, save it as response
-      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: after } }))
+      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: afterMs,  inFlight } }))
     } else {
       // If response.queryResponse is set but is null or undefined, save response as error
-      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: after } }))
+      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: afterMs,  inFlight } }))
     }
   } else if (response !== null && response !== undefined) {
     // If response.queryResponse isn't set, only save response if it's neither null nor undefined
-    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: after } }))
+    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: afterMs,  inFlight } }))
   }
 
   return response
@@ -226,6 +252,7 @@ export function getData<QR>(queryState: QueryState<QR>, key: string | null | und
     error: undefined,
     errorMs: undefined,
     fetchMs: undefined,
+    inFlight: undefined,
   }
   // @ts-ignore
   for (const dataKey of dataKeys) partialData[dataKey] = data[dataKey]
