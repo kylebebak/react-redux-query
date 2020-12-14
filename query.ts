@@ -34,7 +34,7 @@ export type QueryData<QR extends {} = {}, ER = {}> = {
 
 type DataKey = Exclude<keyof QueryData, 'response' | 'responseMs'>
 
-export type RawResponse<RR extends {}, QR extends {}> = RR & { queryResponse?: QR | null }
+export type RawResponse<QR extends {}> = QR | { queryResponse?: QR | null }
 
 export interface QueryOptions {
   dedupe?: boolean
@@ -82,11 +82,12 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
 
   // Create unique id for in-flight request, and add it to inFlight array
   let counter = 0
-  let id = ''
+  let requestId = ''
   while (true) {
-    id = `${fetchMs}-${counter}`
-    if (!inFlight.find(data => data.id === id)) {
+    const id = `${fetchMs}-${counter}`
+    if (!inFlight.find((data) => data.id === id)) {
       inFlight.push({ id, fetchMs })
+      requestId = id
       break
     }
     counter += 1
@@ -107,7 +108,7 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
 
   // Remove request from inFlight array
   const afterMs = Date.now()
-  inFlight = (fetchStateByKey[key]?.inFlight || []).filter(data => data.id !== id)
+  inFlight = (fetchStateByKey[key]?.inFlight || []).filter((data) => data.id !== requestId)
 
   // If error was thrown, notify client and bail out
   if (error) {
@@ -120,14 +121,14 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
     const { queryResponse } = response as { queryResponse?: {} | null }
     if (queryResponse !== null && queryResponse !== undefined) {
       // If response.queryResponse is set and is neither null nor undefined, save it as response
-      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: afterMs,  inFlight } }))
+      dispatch(updateData({ key, data: { response: { ...queryResponse }, responseMs: afterMs, inFlight } }))
     } else {
       // If response.queryResponse is set but is null or undefined, save response as error
-      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: afterMs,  inFlight } }))
+      dispatch(updateData({ key, data: { error: { ...response } as {}, errorMs: afterMs, inFlight } }))
     }
   } else if (response !== null && response !== undefined) {
     // If response.queryResponse isn't set, only save response if it's neither null nor undefined
-    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: afterMs,  inFlight } }))
+    dispatch(updateData({ key, data: { response: { ...response } as {}, responseMs: afterMs, inFlight } }))
   }
 
   return response
@@ -152,9 +153,9 @@ export async function query<RR extends { queryResponse?: {} | null } | {} | null
  *
  * @returns Query data
  */
-export function useQuery<RR, QR = RR>(
+export function useQuery<QR>(
   key: string | null | undefined,
-  fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
+  fetcher: (() => Promise<RawResponse<QR>>) | null | undefined,
   options: QueryOptions & { dataKeys?: DataKey[]; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
   const { dataKeys = [], noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
@@ -197,9 +198,9 @@ export function useQuery<RR, QR = RR>(
  *
  * @returns Query data
  */
-export function usePoll<RR, QR = RR>(
+export function usePoll<QR>(
   key: string | null | undefined,
-  fetcher: (() => Promise<RawResponse<RR, QR>>) | null | undefined,
+  fetcher: (() => Promise<RawResponse<QR>>) | null | undefined,
   options: QueryOptions & { dataKeys?: DataKey[]; intervalMs: number },
 ) {
   const { dataKeys = [], intervalMs, ...rest } = options

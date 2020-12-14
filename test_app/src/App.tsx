@@ -34,7 +34,8 @@ function Component() {
       'get',
       async () => {
         const res = await request<GetData>('https://httpbin.org/get')
-        return { ...res, queryResponse: res.type === 'success' ? res : null }
+        if (res.type === 'success') return res
+        return null
       },
       { dispatch, dedupe: true },
     ).then((res) => {
@@ -52,6 +53,16 @@ function Component() {
   )
 
   console.log('useQueryGet', res?.data.origin)
+
+  const data = useQuery(
+    'useQueryGet',
+    async () => {
+      const res = await request<GetData>('https://httpbin.org/get')
+      if (res.type === 'success') return res
+    },
+    { dedupe: true },
+  )
+  console.log('useQueryGet', data.response?.data.origin)
 
   const { response: noQueryRes } = useQuery('useQueryNoQueryResponse', async () => {
     return await request<GetData>('https://httpbin.org/get')
