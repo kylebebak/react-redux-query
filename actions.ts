@@ -15,9 +15,9 @@ export function save(payload: Save): Action {
   }
 }
 
-export interface Update<QR> {
+export interface Update<R> {
   key: string
-  updater: (response: QR | undefined) => QR | undefined | null
+  updater: (response: R | undefined) => R | undefined | null
 }
 /**
  * Like save, but takes an updater function, which receives the response at key
@@ -26,7 +26,7 @@ export interface Update<QR> {
  * - If updater returns undefined, don't modify response at key
  * - If updater returns null, remove data at key from query branch
  */
-export function update<QR extends {} = any>(payload: Update<QR>): Action {
+export function update<R extends {} = any>(payload: Update<R>): Action {
   return {
     type: 'REACT_REDUX_QUERY_UPDATE_RESPONSE',
     payload,
