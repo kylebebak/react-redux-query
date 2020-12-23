@@ -1,5 +1,5 @@
-import { QueryState } from './query'
 import { Action } from './actions'
+import { QueryState } from './query'
 
 /**
  * This branch of state tree stores query data. Key is usually unique per

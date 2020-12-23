@@ -15,18 +15,18 @@ export const ConfigContext = createContext<{
   catchError?: boolean
 }>({})
 
-interface State<R extends {} = {}, ER = {}> {
-  query: QueryState<R, ER>
+interface State<R extends {} = {}> {
+  query: QueryState<R>
 }
 
-export interface QueryState<R extends {} = any, ER = {}> {
-  [key: string]: QueryData<R, ER> | undefined
+export interface QueryState<R extends {} = any> {
+  [key: string]: QueryData<R> | undefined
 }
 
-export type QueryData<R extends {} = {}, ER = {}> = {
+export type QueryData<R extends {} = {}> = {
   response?: R
   responseMs?: number
-  error?: ER
+  error?: {}
   errorMs?: number
   fetchMs?: number
   inFlight?: { id: string; fetchMs: number }[]
@@ -40,6 +40,11 @@ export interface QueryOptions {
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
+}
+
+export interface DataOptions<R> {
+  dataKeys?: DataKey[]
+  compare?: (prev: QueryData<R>, next: QueryData<R>) => boolean
 }
 
 /**
@@ -56,11 +61,11 @@ export interface QueryOptions {
  *
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns response with optional queryResponse
- *     property
+ *   property
  * @param options:
- *     dispatch - Dispatch function to send response to store
- *     dedupe - Don't call fetcher if another request was recently sent for key
- *     dedupeMs - If dedupe is true, dedupe behavior active for this many ms
+ *   dispatch - Dispatch function to send response to store
+ *   dedupe - Don't call fetcher if another request was recently sent for key
+ *   dedupeMs - If dedupe is true, dedupe behavior active for this many ms
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
@@ -142,27 +147,27 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
  * alone doesn't refetch data.
  *
  * @param key - Key in query branch under which to store response; passing
- *     null/undefined ensures function is NOOP that returns undefined
+ *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryResponse
- *     property
- * @param options - Query options options, plus:
- *     noRefetch - Don't refetch if there's already response at key
- *     noRefetchMs - If noRefetch is true, noRefetch behavior active for this
- *         many ms (forever by default)
- *     refetchKey - Pass in new value to force refetch without changing key
+ *   property
+ * @param options - Query options options and data options, plus:
+ *   noRefetch - Don't refetch if there's already response at key
+ *   noRefetchMs - If noRefetch is true, noRefetch behavior active for this
+ *     many ms (forever by default)
+ *   refetchKey - Pass in new value to force refetch without changing key
  *
  * @returns Query data
  */
 export function useQuery<R>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<R>>) | null | undefined,
-  options: QueryOptions & { dataKeys?: DataKey[]; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+  options: QueryOptions & DataOptions<R> & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { dataKeys = [], noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
+  const { dataKeys, compare, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const dispatch = useDispatch()
   const config = useContext(ConfigContext)
 
-  const data = useData<R>(key, ...dataKeys)
+  const data = useData<R>(key, { dataKeys, compare })
 
   useEffect(() => {
     if (data.response && noRefetch) {
@@ -190,20 +195,20 @@ export function useQuery<R>(
  * poll.
  *
  * @param key - Key in query branch under which to store response; passing
- *     null/undefined ensures function is NOOP that returns undefined
+ *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryResponse
- *     property
- * @param options - Query options, plus:
- *     intervalMs - Interval between end of fetcher call and next fetcher call
+ *   property
+ * @param options - Query options and data options, plus:
+ *   intervalMs - Interval between end of fetcher call and next fetcher call
  *
  * @returns Query data
  */
 export function usePoll<R>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<R>>) | null | undefined,
-  options: QueryOptions & { dataKeys?: DataKey[]; intervalMs: number },
+  options: QueryOptions & DataOptions<R> & { intervalMs: number },
 ) {
-  const { dataKeys = [], intervalMs, ...rest } = options
+  const { dataKeys, compare, intervalMs, ...rest } = options
   const dispatch = useDispatch()
   const config = useContext(ConfigContext)
 
@@ -228,7 +233,7 @@ export function usePoll<R>(
     }
   }, [key, intervalMs]) // eslint-disable-line
 
-  return useData<R>(key, ...dataKeys)
+  return useData<R>(key, { dataKeys, compare })
 }
 
 /**
@@ -237,15 +242,22 @@ export function usePoll<R>(
  *
  * @param queryState - Current query branch of state tree
  * @param key - Key in query branch
- * @param dataKeys - Keys in query data
+ * @param options:
+ *   dataKeys - Keys in query data
  *
- * @returns Query data at key if present, or object with subset of properties
- *     specified by dataKeys
+ * @returns Query data at key, or object with subset of properties specified by
+ *     dataKeys
  */
-export function getData<R>(queryState: QueryState<R>, key: string | null | undefined, ...dataKeys: DataKey[]) {
-  if (!key) return
+export function getData<R>(
+  queryState: QueryState<R>,
+  key: string | null | undefined,
+  options: { dataKeys?: DataKey[] } = {},
+) {
+  const { dataKeys = [] } = options
+
+  if (!key) return {}
   const data = queryState[key]
-  if (!data) return data
+  if (!data) return {}
 
   const partialData: QueryData<R> = {
     response: data.response,
@@ -266,14 +278,21 @@ export function getData<R>(queryState: QueryState<R>, key: string | null | undef
  * changes in these keys only, unless additional dataKeys supplied.
  *
  * @param key - Key in query branch
- * @param dataKeys - Keys in query data
+ * @param options:
+ *   dataKeys - Keys in query data
+ *   compare - Equality function compares previous query data with next query
+ *     data; if it returns false, component rerenders, else it doesn't; uses
+ *     shallowEqual by default
  *
- * @returns Query data at key if present, or object with subset of properties
- *     specified by dataKeys
+ * @returns Query data at key, or object with subset of properties specified by
+ *     dataKeys
  */
-export function useData<R>(key: string | null | undefined, ...dataKeys: DataKey[]) {
+export function useData<R>(key: string | null | undefined, options: DataOptions<R> = {}) {
+  const { dataKeys, compare = shallowEqual } = options
   const { branchName = 'query' } = useContext(ConfigContext)
-  return (
-    useSelector((state: State<R>) => getData<R>(state[branchName as 'query'], key, ...dataKeys), shallowEqual) || {}
+
+  return useSelector(
+    (state: State<R>) => getData<R>(state[branchName as 'query'], key, { dataKeys }),
+    compare,
   )
 }
