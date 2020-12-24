@@ -38,8 +38,8 @@ export interface UpdateData {
   data: Partial<QueryData>
 }
 /**
- * Update query data. key is usually unique per URL path, and should
- * probably be similar to URL path.
+ * Updates query data. key is usually unique per URL path, and should probably
+ * be similar to URL path.
  *
  * This is meant for internal use; data contains query metadata that client code
  * should probably not update.

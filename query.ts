@@ -247,8 +247,7 @@ export function usePoll<R>(
  * @param options:
  *   dataKeys - Keys in query data
  *
- * @returns Query data at key, or object with subset of properties specified by
- *     dataKeys
+ * @returns Query data at key, with subset of properties specified by dataKeys
  */
 export function getData<R>(
   queryState: QueryState<R>,
@@ -286,8 +285,7 @@ export function getData<R>(
  *     data; if it returns false, component rerenders, else it doesn't; uses
  *     shallowEqual by default
  *
- * @returns Query data at key, or object with subset of properties specified by
- *     dataKeys
+ * @returns Query data at key, with subset of properties specified by dataKeys
  */
 export function useData<R>(key: string | null | undefined, options: DataOptions<R> = {}) {
   const { dataKeys, compare } = options

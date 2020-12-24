@@ -1,6 +1,6 @@
 {
   "name": "react-redux-query",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "author": "Kyle Bebak <kylebebak@gmail.com>",
   "description": "React hooks and functions for SWR-style data fetching, caching and automatic updates, backed by Redux",
   "main": "./index.js",
@@ -27,7 +27,7 @@
   "dependencies": {},
   "husky": {
     "hooks": {
-      "pre-push": "yarn prettier-check"
+      "pre-push": "yarn test"
     }
   },
   "devDependencies": {
@@ -35,8 +35,6 @@
     "@types/react-dom": "^16.9.8",
     "@types/react-redux": "^7.1.9",
     "ava": "^3.13.0",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^7.11.0",
     "husky": "^4.3.0",
     "node-fetch": "^2.6.1",
     "prettier": "^2.1.2",
