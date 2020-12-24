@@ -13,6 +13,8 @@ export const ConfigContext = createContext<{
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
+  dataKeys?: DataKey[]
+  compare?: (prev: QueryData<{}>, next: QueryData<{}>) => boolean
 }>({})
 
 interface State<R extends {} = {}> {
@@ -288,11 +290,11 @@ export function getData<R>(
  *     dataKeys
  */
 export function useData<R>(key: string | null | undefined, options: DataOptions<R> = {}) {
-  const { dataKeys, compare = shallowEqual } = options
-  const { branchName = 'query' } = useContext(ConfigContext)
+  const { dataKeys, compare } = options
+  const { branchName = 'query', dataKeys: configDataKeys, compare: configCompare } = useContext(ConfigContext)
 
   return useSelector(
-    (state: State<R>) => getData<R>(state[branchName as 'query'], key, { dataKeys }),
-    compare,
+    (state: State<R>) => getData<R>(state[branchName as 'query'], key, { dataKeys: dataKeys || configDataKeys }),
+    compare || configCompare || shallowEqual,
   )
 }
