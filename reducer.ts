@@ -2,6 +2,7 @@ import { Action } from './actions'
 import { QueryState } from './query'
 
 /**
+ * Reduces state in query branch of state tree depending on action dispatched.
  * This branch of state tree stores query data. Key is usually unique per
  * fetcher URL path, and should be similar to URL path.
  *
@@ -9,6 +10,11 @@ import { QueryState } from './query'
  * any fetcher, including metadata and errors. It also allows them to render
  * themselves immediately if the data they need has already been added to the
  * 'query' branch of the state tree.
+ *
+ * @param state - State object in query branch
+ * @param action - Action object
+ *
+ * @returns Updated state object
  */
 export default function reduce(state: QueryState = {}, action: Action): QueryState {
   const responseMs = Date.now()

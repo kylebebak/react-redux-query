@@ -15,7 +15,7 @@ Flexible, small and very simple. Written in TypeScript.
 
 RRQ's main hook, `useQuery`, fetches data, throws it into Redux, and rerenders your components whenever data changes.
 
-It take 3 arguments, `(key: string, fetcher: () => Promise<{}>, options: {})`, and returns the cached data in Redux under `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data saved at `key`.
+It takes 3 arguments, `(key: string, fetcher: () => Promise<{}>, options: {})`, and returns the cached data in Redux under `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data under `key`.
 
 ```ts
 import { useQuery } from 'react-redux-query'
@@ -55,7 +55,7 @@ function Profile() {
 }
 ```
 
-This way you can still return the entire response from your fetcher, even if it's a "bad" response, while instructing RRQ to not overwrite your `response` data in Redux. In this case, the `error` property would contain the response for status codes other than `200`, or an error object if fetcher throws an error.
+This way you can return the unmodified response from your fetcher, even if it's a "bad" response, while instructing RRQ to not overwrite your `response` data in Redux. In this case, the `error` variable would contain the response for status codes other than `200`, or an error object if fetcher throws an error.
 
 ### `usePoll`
 
@@ -67,6 +67,7 @@ RRQ uses Redux to cache fetched data, and allows components to subscribe to chan
 
 ```ts
 import { combineReducers, createStore } from 'redux'
+import { Provider } from 'react-redux'
 import { reducer as queryReducer } from 'react-redux-query'
 
 const rootReducer = combineReducers({ ...myOtherReducers, query: queryReducer })
@@ -89,7 +90,7 @@ const App = () => {
 
 RRQ also exports a lower-level async `query` function that has the same signature as the hooks `(key: string, fetcher: () => Promise<{}>, options: {})`.
 
-This function is used by the `useQuery` and `usePoll` hooks. It calls `fetcher`, awaits the response, throws it into Redux if appropriate, and returns the response as-is.
+This function is used by `useQuery` and `usePoll`. It calls `fetcher`, awaits the response, throws it into Redux if appropriate, and returns the response as-is.
 
 You should use this function wherever you want to fetch and cache data outside of the render lifecycle. For example, in a save user callback:
 
@@ -105,7 +106,7 @@ const handleSaveUser = async (userId) => {
 }
 ```
 
-The `options` object must contain a `dispatch` property with the Redux dispatch function (dispatch is used to throw the response into Redux). Feel free to write a wrapper around `query` that passes in `dispatch` for you if you don't want to pass it in every time.
+The `options` object must contain a `dispatch` property with the Redux dispatch function (this is used to throw the response into Redux). Feel free to write a wrapper around `query` that passes in `dispatch` for you if you don't want to pass it in every time.
 
 ### `useData` hook
 
@@ -196,8 +197,8 @@ React and Redux.
 
 ## Development and tests
 
-Clone the repo, then `yarn`, then `yarn test`. This runs tests that on the vanilla JS parts of RRQ, but none of the React hooks.
+Clone the repo, then `yarn`, then `yarn test`. This runs tests on the vanilla JS parts of RRQ, but none of the React hooks.
 
-To test the React hooks, run `cd test_app`, then `yarn`, then `yarn prepare`.
+To test the React hooks, run `cd test_app`, then `yarn`.
 
 Then run `yarn start` or `yarn test` to run React test app or to run tests on test app.

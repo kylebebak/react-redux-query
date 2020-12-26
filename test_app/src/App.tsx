@@ -13,7 +13,7 @@ function Component() {
 
   useEffect(() => {
     setTimeout(() => setTimePassed(true), 2000)
-  })
+  }, [])
 
   useEffect(() => {
     query(
@@ -88,29 +88,36 @@ function Component() {
     { noRefetch: true, noRefetchMs: 100 },
   )
 
-  useEffect(() => {
-    query(
-      'get',
-      async () => {
-        // @ts-ignore
-        return {}.b.c as number
-      },
-      { dispatch },
-    ).then((res) => {
-      console.log('fetcher error caught, res is undefined:', res === undefined)
-    })
-  }, [dispatch])
+  const { error, inFlight } = useQuery(
+    'get',
+    async () => {
+      // @ts-ignore
+      return {}.b.c as number
+    },
+    { dataKeys: ['error', 'inFlight'] },
+  )
 
-  const { response: pollRes, responseMs: pollResMs } = usePoll(
+  console.log({ error, inFlight })
+
+  // This poll causes no rerendering, because compare fn always returns true
+  usePoll(
+    'pollNeverRerender',
+    async () => await request<GetData>('https://httpbin.org/get'),
+    { intervalMs: 5 * 1000, compare: () => true },
+  )
+
+  // This poll causes two rerenders each time fetcher is called (one when request is sent, one when response comes back)
+  const { response: pollRes, responseMs: pollResMs, inFlight: pollInFlight } = usePoll(
     'usePollGet',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
       return { ...res, queryResponse: res.type === 'success' ? res : null }
     },
-    { intervalMs: 5 * 1000, dedupe: true },
+    { intervalMs: 5 * 1000, dedupe: true, dataKeys: ['inFlight'] },
   )
 
-  console.log({ pollRes: pollRes?.data.origin, pollResMs })
+  console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
+  console.log('\n')
 
   return null
 }

@@ -64,10 +64,13 @@ export interface DataOptions<R> {
  * @param key - Key in query branch under which to store response
  * @param fetcher - Function that returns response with optional queryResponse
  *   property
- * @param options:
- *   dispatch - Dispatch function to send response to store
- *   dedupe - Don't call fetcher if another request was recently sent for key
- *   dedupeMs - If dedupe is true, dedupe behavior active for this many ms
+ * @param options - Options object
+ * @param options.dispatch - Dispatch function to send response to store
+ *   (required)
+ * @param options.dedupe - Don't call fetcher if another request was recently
+ *   sent for key
+ * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
+ *   many ms
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
@@ -81,19 +84,20 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
 
   // Bail out if dedupe is true and another request was recently sent for key
   const before = Date.now()
-  const fetchState = fetchStateByKey[key]
-  if (dedupe && fetchState && before - fetchState.fetchMs <= dedupeMs) return
+  const fetchStateBefore = fetchStateByKey[key]
+  if (dedupe && fetchStateBefore && before - fetchStateBefore.fetchMs <= dedupeMs) return
 
   const fetchMs = before
-  let inFlight = fetchStateByKey[key]?.inFlight || []
+  // Create shallow copy of inFlight array so === comparison returns false
+  const inFlightBefore = [...(fetchStateBefore?.inFlight || [])]
 
   // Create unique id for in-flight request, and add it to inFlight array
   let counter = 0
   let requestId = ''
   while (true) {
     const id = `${fetchMs}-${counter}`
-    if (!inFlight.find((data) => data.id === id)) {
-      inFlight.push({ id, fetchMs })
+    if (!inFlightBefore.find((data) => data.id === id)) {
+      inFlightBefore.push({ id, fetchMs })
       requestId = id
       break
     }
@@ -101,8 +105,8 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
   }
 
   // Notify client that fetcher will be called
-  fetchStateByKey[key] = { fetchMs, inFlight }
-  dispatch(updateData({ key, data: { fetchMs, inFlight } }))
+  fetchStateByKey[key] = { fetchMs, inFlight: inFlightBefore }
+  dispatch(updateData({ key, data: { fetchMs, inFlight: inFlightBefore } }))
 
   // Call fetcher
   let response: R = undefined as R
@@ -115,7 +119,10 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
 
   // Remove request from inFlight array
   const afterMs = Date.now()
-  inFlight = (fetchStateByKey[key]?.inFlight || []).filter((data) => data.id !== requestId)
+  const fetchState = fetchStateByKey[key]
+  // Calling filter on inFlight array ensures === comparison returns false
+  const inFlight = (fetchState?.inFlight || []).filter((data) => data.id !== requestId)
+  fetchStateByKey[key] = { fetchMs: fetchState?.fetchMs || fetchMs, inFlight }
 
   // If error was thrown, notify client and bail out
   if (error) {
@@ -152,11 +159,12 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
  *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryResponse
  *   property
- * @param options - Query options options and data options, plus:
- *   noRefetch - Don't refetch if there's already response at key
- *   noRefetchMs - If noRefetch is true, noRefetch behavior active for this
- *     many ms (forever by default)
- *   refetchKey - Pass in new value to force refetch without changing key
+ * @param options - Object with query options and data options, plus:
+ * @param options.noRefetch - Don't refetch if there's already response at key
+ * @param options.noRefetchMs - If noRefetch is true, noRefetch behavior active
+ *   for this many ms (forever by default)
+ * @param options.refetchKey - Pass in new value to force refetch without
+ *   changing key
  *
  * @returns Query data
  */
@@ -200,8 +208,9 @@ export function useQuery<R>(
  *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryResponse
  *   property
- * @param options - Query options and data options, plus:
- *   intervalMs - Interval between end of fetcher call and next fetcher call
+ * @param options - Object with query options and data options, plus:
+ * @param options.intervalMs - Interval between end of fetcher call and next
+ *   fetcher call
  *
  * @returns Query data
  */
@@ -244,8 +253,8 @@ export function usePoll<R>(
  *
  * @param queryState - Current query branch of state tree
  * @param key - Key in query branch
- * @param options:
- *   dataKeys - Keys in query data
+ * @param options - Options object
+ * @param options.dataKeys - Keys in query data
  *
  * @returns Query data at key, with subset of properties specified by dataKeys
  */
@@ -274,16 +283,17 @@ export function getData<R>(
 }
 
 /**
- * Hook retrieves query data from Redux, and subscribes to changes in object.
- * Includes only response and responseMs keys by default, and subscribes to
- * changes in these keys only, unless additional dataKeys supplied.
+ * Hook retrieves query data from Redux, and subscribes to changes in data
+ * object. Data object includes only response and responseMs keys by default,
+ * and subscribes to changes in these keys only, unless additional dataKeys
+ * supplied.
  *
  * @param key - Key in query branch
- * @param options:
- *   dataKeys - Keys in query data
- *   compare - Equality function compares previous query data with next query
- *     data; if it returns false, component rerenders, else it doesn't; uses
- *     shallowEqual by default
+ * @param options - Options object
+ * @param options.dataKeys - Keys in query data
+ * @param options.compare - Equality function compares previous query data with
+ *   next query data; if it returns false, component rerenders, else it doesn't;
+ *   uses shallowEqual by default
  *
  * @returns Query data at key, with subset of properties specified by dataKeys
  */

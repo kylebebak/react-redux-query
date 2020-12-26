@@ -5,8 +5,14 @@ export interface Save {
   response: {}
 }
 /**
- * Stores fetcher response. key is usually unique per URL path, and should
- * probably be similar to URL path.
+ * Action stores fetcher response. key is usually unique per URL path, and
+ * should probably be similar to URL path.
+ *
+ * @param payload - Payload object
+ * @param payload.key - Key in query branch under which to save response
+ * @param payload.response - Response object
+ *
+ * @returns Redux action object
  */
 export function save(payload: Save): Action {
   return {
@@ -25,6 +31,13 @@ export interface Update<R> {
  *
  * - If updater returns undefined, don't modify response at key
  * - If updater returns null, remove data at key from query branch
+ *
+ * @param payload - Payload object
+ * @param payload.key - Key in query branch under which to save response
+ * @param payload.updater - Function that receives response at key and must
+ *   return a response, undefined, or null
+ *
+ * @returns Redux action object
  */
 export function update<R extends {} = any>(payload: Update<R>): Action {
   return {
@@ -38,11 +51,17 @@ export interface UpdateData {
   data: Partial<QueryData>
 }
 /**
- * Updates query data. key is usually unique per URL path, and should probably
- * be similar to URL path.
+ * Action updates query data. key is usually unique per URL path, and should
+ * probably be similar to URL path.
  *
  * This is meant for internal use; data contains query metadata that client code
  * should probably not update.
+ *
+ * @param payload - Payload object
+ * @param payload.key - Key in query branch under which to save data
+ * @param payload.data - Data object
+ *
+ * @returns Redux action object
  */
 export function updateData(payload: UpdateData): Action {
   return {
