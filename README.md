@@ -15,7 +15,7 @@ Flexible, small and very simple. Written in TypeScript.
 
 RRQ's main hook, `useQuery`, fetches data, throws it into Redux, and rerenders your components whenever data changes.
 
-It takes 3 arguments, `(key: string, fetcher: () => Promise<{}>, options: {})`, and returns the cached data in Redux under `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data under `key`.
+It takes 3 arguments, `(key: string, fetcher: () => Promise<{}>, options?: {})`, and returns the cached data in Redux under `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data under `key`.
 
 ```ts
 import { useQuery } from 'react-redux-query'
@@ -57,10 +57,6 @@ function Profile() {
 
 This way you can return the unmodified response from your fetcher, even if it's a "bad" response, while instructing RRQ to not overwrite your `response` data in Redux. In this case, the `error` variable would contain the response for status codes other than `200`, or an error object if fetcher throws an error.
 
-### `usePoll`
-
-`usePoll` is the same as `useQuery`, except that it requires an `intervalMs` property in the options. After `fetcher` returns, it's called again after `intervalMs`. The actual polling interval depends on how long fetcher takes to return, which means polling interval adapts to network and server speed.
-
 ### Setup
 
 RRQ uses Redux to cache fetched data, and allows components to subscribe to changes in fetched data. To use RRQ in your app, you need to use [Redux](https://react-redux.js.org/).
@@ -86,11 +82,15 @@ const App = () => {
 
 > The default name of the RRQ branch in your Redux state tree is `query`. [See below](#custom-config-context) how to use a custom branch name.
 
+### Polling
+
+To do polling with `useQuery`, just pass the `intervalMs` property in the options. After `fetcher` returns, it's called again after `intervalMs`. The actual polling interval depends on how long fetcher takes to return, which means polling interval adapts to network and server speed.
+
 ### `query` function
 
 RRQ also exports a lower-level async `query` function that has the same signature as the hooks `(key: string, fetcher: () => Promise<{}>, options: {})`.
 
-This function is used by `useQuery` and `usePoll`. It calls `fetcher`, awaits the response, throws it into Redux if appropriate, and returns the response as-is.
+This function is used by `useQuery`. It calls `fetcher`, awaits the response, throws it into Redux if appropriate, and returns the response as-is.
 
 You should use this function wherever you want to fetch and cache data outside of the render lifecycle. For example, in a save user callback:
 
@@ -110,11 +110,11 @@ The `options` object must contain a `dispatch` property with the Redux dispatch 
 
 ### `useData` hook
 
-If you just want to subscribe to data changes without sending a request, use the `useData` hook (which is used by `useQuery` and `usePoll` under the hood).
+If you just want to subscribe to data changes without sending a request, use the `useData` hook (which is used by `useQuery` under the hood).
 
 It takes a `key` and an `options` object (it omits the `fetcher`). It [connects your component to Redux](https://react-redux.js.org/api/hooks#useselector) and returns the data object at `key`, with a subset of properties specified by `options.dataKeys`. To avoid unnecessary rerenders, only `response` and `responseMs` are included by default.
 
-You can pass an array of additional keys (`'error'`, `'errorMs'`, `'fetchMs'`, `'inFlight'`) to subscribe to changes in these metadata properties as well.
+You can pass an array of additional keys (`'error'`, `'errorMs'`, `'fetchMs'`, `'inFlight'`) to subscribe to changes in these properties as well.
 
 To control whether your component rerenders when data changes, you can pass in a custom equality comparator using `options.compare`. This function takes previous data and next data as args. If it returns false, your connected component rerenders, else it doesn't. It uses `shallowEqual` by default, which means any change in the `data.response` object triggers a rerender.
 
@@ -124,7 +124,7 @@ RRQ ships with the following [Redux actions](https://redux.js.org/faq/actions):
 
 - `save`: stores fetcher response
 - `update`: like save, but takes an updater function, which receives the response at key and must return a response, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes data at key from query branch
-- `updateData`: updates data (mainly for internal use, because it can modify query metadata)
+- `updateData`: updates query data object (you probably don't need to use this)
 
 These are really action creators (functions that return action objects). You can use the first two to overwrite the response at a given key in the query branch. For example, in a save user callback:
 

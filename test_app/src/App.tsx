@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Provider, useDispatch } from 'react-redux'
 import request from 'request-dot-js'
 
-import { query, useQuery, usePoll, ConfigContext } from './rrq/query'
+import { query, useQuery, ConfigContext } from './rrq/query'
 import store from './store'
 
 type GetData = { origin: string; url: string; headers: { [key: string]: string } }
@@ -100,15 +100,15 @@ function Component() {
   console.log({ error, inFlight })
 
   // This poll causes no rerendering, because compare fn always returns true
-  usePoll(
+  useQuery(
     'pollNeverRerender',
     async () => await request<GetData>('https://httpbin.org/get'),
     { intervalMs: 5 * 1000, compare: () => true },
   )
 
   // This poll causes two rerenders each time fetcher is called (one when request is sent, one when response comes back)
-  const { response: pollRes, responseMs: pollResMs, inFlight: pollInFlight } = usePoll(
-    'usePollGet',
+  const { response: pollRes, responseMs: pollResMs, inFlight: pollInFlight } = useQuery(
+    'useQueryPoll',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
       return { ...res, queryResponse: res.type === 'success' ? res : null }

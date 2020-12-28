@@ -2,16 +2,17 @@
   "name": "react-redux-query",
   "version": "0.6.1",
   "author": "Kyle Bebak <kylebebak@gmail.com>",
-  "description": "React hooks and functions for SWR-style data fetching, caching and automatic updates, backed by Redux",
+  "description": "React hooks and functions for SWR-style data fetching, backed by Redux",
   "main": "./index.js",
   "keywords": [
+    "cache",
+    "data",
     "fetch",
-    "request",
+    "pubsub",
     "query",
     "redux",
-    "SWR",
-    "cache",
-    "pubsub"
+    "request",
+    "SWR"
   ],
   "repository": {
     "type": "git",
@@ -42,7 +43,7 @@
     "typescript": "^4.0.3"
   },
   "peerDependencies": {
-    "react": "^16.10.0",
+    "react": "^16.10.0 || ^17.0.0",
     "react-redux": "^7.1.0",
     "redux": "^4.0.0"
   }

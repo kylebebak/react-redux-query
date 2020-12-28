@@ -67,10 +67,12 @@ export interface DataOptions<R> {
  * @param options - Options object
  * @param options.dispatch - Dispatch function to send response to store
  *   (required)
- * @param options.dedupe - Don't call fetcher if another request was recently
- *   sent for key
+ * @param options.dedupe - If true, don't call fetcher if another request was
+ *   recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
- *   many ms
+ *   many ms (2000 by default)
+ * @param options.catchError - If true, any error thrown by fetcher is caught
+ *   and assigned to data.error property (true by default)
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
@@ -159,95 +161,72 @@ export async function query<R extends { queryResponse?: {} | null } | {} | null 
  *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryResponse
  *   property
- * @param options - Object with query options and data options, plus:
- * @param options.noRefetch - Don't refetch if there's already response at key
+ * @param options - Options object
+ * @param options.intervalMs - Interval between end of fetcher call and next
+ *   fetcher call
+ * @param options.noRefetch - If true, don't refetch if there's already response
+ *   at key
  * @param options.noRefetchMs - If noRefetch is true, noRefetch behavior active
  *   for this many ms (forever by default)
  * @param options.refetchKey - Pass in new value to force refetch without
  *   changing key
+ * @param options.dedupe - If true, don't call fetcher if another request was
+ *   recently sent for key
+ * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
+ *   many ms (2000 by default)
+ * @param options.catchError - If true, any error thrown by fetcher is caught
+ *   and assigned to data.error property (true by default)
+ * @param options.dataKeys - Keys in query data
+ * @param options.compare - Equality function compares previous query data with
+ *   next query data; if it returns false, component rerenders, else it doesn't;
+ *   uses shallowEqual by default
  *
  * @returns Query data
  */
 export function useQuery<R>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<R>>) | null | undefined,
-  options: QueryOptions & DataOptions<R> & { noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+  options: QueryOptions &
+    DataOptions<R> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { dataKeys, compare, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
-  const dispatch = useDispatch()
+  const { dataKeys, compare, intervalMs = 0, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const config = useContext(ConfigContext)
 
+  const dispatch = useDispatch()
+  const intervalId = useRef(0)
   const data = useData<R>(key, { dataKeys, compare })
 
   useEffect(() => {
+    // Clear previous interval, create id for new interval
+    intervalId.current = intervalId.current + 1
+
+    // Should we return early?
     if (data.response && noRefetch) {
       // Defensive code; can't be sure responseMs is a number (user could use their own reducer)
       if (noRefetchMs <= 0 || typeof data.responseMs !== 'number') return
       // User specified a positive value for noRefetchMs; determine if we should we refetch or not
       if (Date.now() - data.responseMs <= noRefetchMs) return
     }
-    if (fetcher && key) query(key, fetcher, { ...config, ...rest, dispatch })
-  }, [key, refetchKey]) // eslint-disable-line
-
-  return data
-}
-
-/**
- * Hook calls fetcher and saves response to query branch under key. Immediately
- * returns query data under key, and subscribes to changes in this data.
- *
- * After fetcher returns, it's called again after intervalMs. Actual polling
- * interval depends on how long fetcher takes to return, which means polling
- * interval adapts to network and server speed.
- *
- * Poll is cleared if component unmounts. Poll is cleared and reset if key or
- * intervalMs changes. Passing in a new fetcher function alone doesn't reset
- * poll.
- *
- * @param key - Key in query branch under which to store response; passing
- *   null/undefined ensures function is NOOP that returns undefined
- * @param fetcher - Function that returns response with optional queryResponse
- *   property
- * @param options - Object with query options and data options, plus:
- * @param options.intervalMs - Interval between end of fetcher call and next
- *   fetcher call
- *
- * @returns Query data
- */
-export function usePoll<R>(
-  key: string | null | undefined,
-  fetcher: (() => Promise<QueryResponse<R>>) | null | undefined,
-  options: QueryOptions & DataOptions<R> & { intervalMs: number },
-) {
-  const { dataKeys, compare, intervalMs, ...rest } = options
-  const dispatch = useDispatch()
-  const config = useContext(ConfigContext)
-
-  const pollId = useRef<number | null>(0)
-
-  useEffect(() => {
-    // Clear previous poll, create id for new poll
-    if (pollId.current === null) return
-    pollId.current = pollId.current + 1
     if (!key || !fetcher) return
 
-    // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
-    const poll = async (pid: number) => {
-      if (pollId.current === null || pollId.current !== pid) return
+    const doQuery = async (id: number) => {
+      if (intervalMs > 0 && intervalId.current !== id) return
       await query(key, fetcher, { ...config, ...rest, dispatch })
-      setTimeout(() => poll(pid), intervalMs)
+      // "pseudo-recursive" interval call means call stack doesn't grow: https://stackoverflow.com/questions/48736331
+      if (intervalMs > 0) setTimeout(() => doQuery(id), intervalMs)
     }
-    poll(pollId.current)
-  }, [key, intervalMs]) // eslint-disable-line
 
+    doQuery(intervalId.current)
+  }, [key, intervalMs, refetchKey]) // eslint-disable-line
+
+  // Also clear interval when component unmounts
   useEffect(() => {
-    // Also clear poll when component unmounts
     return () => {
-      pollId.current = null
+      intervalId.current = -1
     }
   }, [])
 
-  return useData<R>(key, { dataKeys, compare })
+  return data
 }
 
 /**
