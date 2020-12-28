@@ -223,26 +223,29 @@ export function usePoll<R>(
   const dispatch = useDispatch()
   const config = useContext(ConfigContext)
 
-  const pollId = useRef(0)
+  const pollId = useRef<number | null>(0)
 
   useEffect(() => {
     // Clear previous poll, create id for new poll
+    if (pollId.current === null) return
     pollId.current = pollId.current + 1
     if (!key || !fetcher) return
 
     // "pseudo-recursive" implementation means call stack doesn't grow: https://stackoverflow.com/questions/48736331
     const poll = async (pid: number) => {
-      if (pollId.current === 0 || pollId.current !== pid) return
+      if (pollId.current === null || pollId.current !== pid) return
       await query(key, fetcher, { ...config, ...rest, dispatch })
       setTimeout(() => poll(pid), intervalMs)
     }
     poll(pollId.current)
+  }, [key, intervalMs]) // eslint-disable-line
 
+  useEffect(() => {
     // Also clear poll when component unmounts
     return () => {
-      pollId.current = 0
+      pollId.current = null
     }
-  }, [key, intervalMs]) // eslint-disable-line
+  }, [])
 
   return useData<R>(key, { dataKeys, compare })
 }
