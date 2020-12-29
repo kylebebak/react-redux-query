@@ -10,9 +10,10 @@ type GetData = { origin: string; url: string; headers: { [key: string]: string }
 function Component() {
   const dispatch = useDispatch()
   const [timePassed, setTimePassed] = useState(false)
+  const [clickTs, setClickTs] = useState(0)
 
   useEffect(() => {
-    setTimeout(() => setTimePassed(true), 2000)
+    setTimeout(() => setTimePassed(true), 5000)
   }, [])
 
   useEffect(() => {
@@ -20,11 +21,11 @@ function Component() {
       'get',
       async () => {
         const res = await request<GetData>('https://httpbin.org/get')
-        return { ...res, queryResponse: res.type === 'success' ? res : null }
+        return { ...res, queryData: res.type === 'success' ? res : null }
       },
       { dispatch },
     ).then((res) => {
-      if (res?.queryResponse) console.log(res.queryResponse.data.origin)
+      if (res?.queryData) console.log(res.queryData.data.origin)
       if (res?.type === 'success') console.log(res.data.origin)
     })
   }, [dispatch])
@@ -43,18 +44,18 @@ function Component() {
     })
   }, [dispatch])
 
-  const { response: res } = useQuery(
+  const { data: res } = useQuery(
     'useQueryGet',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
-      return { ...res, queryResponse: res.type === 'success' ? res : null }
+      return { ...res, queryData: res.type === 'success' ? res : null }
     },
     { dedupe: true },
   )
 
   console.log('useQueryGet', res?.data.origin)
 
-  const data = useQuery(
+  const queryState = useQuery(
     'useQueryGet',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
@@ -62,9 +63,9 @@ function Component() {
     },
     { dedupe: true },
   )
-  console.log('useQueryGet', data.response?.data.origin)
+  console.log('useQueryGet', queryState.data?.data.origin)
 
-  const { response: noQueryRes } = useQuery('useQueryNoQueryResponse', async () => {
+  const { data: noQueryRes } = useQuery('useQueryNoQueryData', async () => {
     return await request<GetData>('https://httpbin.org/get')
   })
 
@@ -74,7 +75,7 @@ function Component() {
     timePassed ? 'useQueryGet' : null,
     async () => {
       console.log('fetcher not called, not logged')
-      return { queryResponse: null }
+      return { queryData: null }
     },
     { noRefetch: true },
   )
@@ -82,8 +83,8 @@ function Component() {
   useQuery(
     timePassed ? 'useQueryGet' : null,
     async () => {
-      console.log('fetcher called, response not overwritten')
-      return { queryResponse: null }
+      console.log('fetcher called, data not overwritten')
+      return { queryData: null }
     },
     { noRefetch: true, noRefetchMs: 100 },
   )
@@ -94,32 +95,35 @@ function Component() {
       // @ts-ignore
       return {}.b.c as number
     },
-    { dataKeys: ['error', 'inFlight'] },
+    { stateKeys: ['error', 'inFlight'] },
   )
 
   console.log({ error, inFlight })
 
   // This poll causes no rerendering, because compare fn always returns true
-  useQuery(
-    'pollNeverRerender',
-    async () => await request<GetData>('https://httpbin.org/get'),
-    { intervalMs: 5 * 1000, compare: () => true },
-  )
+  useQuery('pollNeverRerender', async () => await request<GetData>('https://httpbin.org/get'), {
+    intervalMs: 5 * 1000,
+    compare: () => true,
+  })
 
-  // This poll causes two rerenders each time fetcher is called (one when request is sent, one when response comes back)
-  const { response: pollRes, responseMs: pollResMs, inFlight: pollInFlight } = useQuery(
+  // This poll causes two rerenders each time fetcher is called (one when request is sent, one when request completes)
+  const { data: pollRes, dataMs: pollResMs, inFlight: pollInFlight } = useQuery(
     'useQueryPoll',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
-      return { ...res, queryResponse: res.type === 'success' ? res : null }
+      return { ...res, queryData: res.type === 'success' ? res : null }
     },
-    { intervalMs: 5 * 1000, dedupe: true, dataKeys: ['inFlight'] },
+    { intervalMs: timePassed ? undefined : 1500, stateKeys: ['inFlight'], refetchKey: clickTs },
   )
 
   console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
   console.log('\n')
 
-  return null
+  return (
+    <div onClick={() => setClickTs(Date.now())} style={{ width: 100, height: 100 }}>
+      Refetch
+    </div>
+  )
 }
 
 const App = () => {
