@@ -1,5 +1,5 @@
-import { Action } from './actions'
-import { QueryBranch } from './query'
+import { Action, Update } from './actions'
+import { QueryBranch, QueryOptions } from './query'
 
 /**
  * Reduces state in query branch of Redux state tree depending on action
@@ -30,9 +30,9 @@ export default function reduce(state: QueryBranch = {}, action: Action): QueryBr
     }
 
     case 'REACT_REDUX_QUERY_UPDATE_DATA': {
-      const { key, updater } = action.payload
+      const { key, updater, newData } = action.payload as Update<any> & { newData: any }
 
-      const data = updater(state[key]?.data)
+      const data = (updater as NonNullable<QueryOptions<any>['updater']>)(state[key]?.data, newData)
       if (data === undefined) return state
       if (data === null) {
         const { [key]: _, ...rest } = state

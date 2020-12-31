@@ -9,7 +9,7 @@ export interface Save {
  * probably be similar to URL path.
  *
  * @param payload - Payload object
- * @param payload.key - Key in query branch under which to save data
+ * @param payload.key - Key in query branch at which to save data
  * @param payload.data - Data object
  *
  * @returns Redux action object
@@ -27,15 +27,17 @@ export interface Update<D> {
 }
 /**
  * Like save, but takes an updater function, which receives the data at key and
- * must return new data, undefined, or null.
+ * must return updated data, undefined, or null.
  *
  * - If updater returns undefined, don't modify data at key
  * - If updater returns null, remove query state at key from query branch
  *
  * @param payload - Payload object
- * @param payload.key - Key in query branch under which to save data
+ * @param payload.key - Key in query branch at which to save data
  * @param payload.updater - Function that receives data at key and must return
- *   new data, undefined, or null
+ *   updated data, undefined, or null
+ * @param payload.newData - If this is passed, updater receives this as second
+ *   argument
  *
  * @returns Redux action object
  */
@@ -58,7 +60,7 @@ export interface UpdateQueryState {
  * client code should probably not update.
  *
  * @param payload - Payload object
- * @param payload.key - Key in query branch under which to save query state
+ * @param payload.key - Key in query branch at which to save query state
  * @param payload.state - Query state object
  *
  * @returns Redux action object

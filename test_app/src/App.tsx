@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Provider, useDispatch } from 'react-redux'
-import request from 'request-dot-js'
+import request, { SuccessResponse } from 'request-dot-js'
 
 import { query, useQuery, ConfigContext } from './rrq/query'
+import { update } from './rrq/actions'
 import store from './store'
 
 type GetData = { origin: string; url: string; headers: { [key: string]: string } }
@@ -14,7 +15,13 @@ function Component() {
 
   useEffect(() => {
     setTimeout(() => setTimePassed(true), 5000)
-  }, [])
+    dispatch(
+      update({
+        key: 'get',
+        updater: (data?: SuccessResponse<GetData>) => undefined,
+      }),
+    )
+  }, [dispatch])
 
   useEffect(() => {
     query(
@@ -113,7 +120,12 @@ function Component() {
       const res = await request<GetData>('https://httpbin.org/get')
       return { ...res, queryData: res.type === 'success' ? res : null }
     },
-    { intervalMs: timePassed ? undefined : 1500, stateKeys: ['inFlight'], refetchKey: clickTs },
+    {
+      intervalMs: timePassed ? undefined : 1500,
+      stateKeys: ['inFlight'],
+      refetchKey: clickTs,
+      updater: (_, newData) => newData,
+    },
   )
 
   console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })

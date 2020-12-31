@@ -15,7 +15,7 @@ Flexible, small and very simple. Written in TypeScript.
 
 RRQ's main hook, `useQuery`, fetches data, throws it into Redux, and rerenders your components whenever data changes.
 
-It takes 3 arguments, `(key: string, fetcher: () => Promise<{}>, options?: {})`. It calls your fetcher and immediately returns the cached data in Redux under `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data under `key`.
+It takes 3 arguments, `(key: string, fetcher: () => Promise<{}>, options?: {})`. It calls your fetcher and immediately returns the cached data in Redux at `key`. It connects your component to Redux with `useSelector`, so it subscribes to data changes whenever they occur. This means your component always rerenders with the most recently fetched data at `key`.
 
 ```ts
 import { useQuery } from 'react-redux-query'
@@ -127,7 +127,7 @@ default, which means any change in `data` triggers a rerender.
 RRQ ships with the following [Redux actions](https://redux.js.org/faq/actions):
 
 - `save`: saves data at key
-- `update`: like save, but takes an updater function, which receives the `data` at key and must return new data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes data at key from query branch
+- `update`: like save, but takes an updater function, which receives the `data` at key and must return updated data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes data at key from query branch
 - `updateQueryState`: updates query state object (you probably don't need to use this)
 
 These are really action creators (functions that return action objects). You can use the first two to overwrite the `data` at a given key in the query branch. For example, in a save user callback:
@@ -147,6 +147,19 @@ const handleSaveUser = async (userId, body) => {
   )
 }
 ```
+
+### All `useQuery` options
+
+- `intervalMs`: Interval between end of fetcher call and next fetcher call
+- `noRefetch`: If true, don't refetch if there's already data at key
+- `noRefetchMs`: If noRefetch is true, noRefetch behavior active for this many ms (forever by default)
+- `refetchKey`: Pass in new value to force refetch without changing key
+- `updater`: If passed, this function takes data currently at key, plus data in response, and returns updated data to be saved at key
+- `dedupe`: If true, don't call fetcher if another request was recently sent for key
+- `dedupeMs`: If dedupe is true, dedupe behavior active for this many ms (2000 by default)
+- `catchError`: If true, any error thrown by fetcher is caught and assigned to data.error property (true by default)
+- `stateKeys`: Additional keys in query state to include in return value
+- `compare`: Equality function compares previous query state with next query state; if it returns false, component rerenders, else it doesn't; uses shallowEqual by default
 
 ### Custom config context
 
@@ -194,7 +207,7 @@ Why not SWR or React Query?
 
 - uses Redux for data persistence and automatic updates; performant, community-standard solution for managing application state; easy to modify and subscribe to stored data, and easy to extend RRQ's read/write behavior by writing your own hooks/selectors/actions
 - `queryData` property makes it easy to transform fetcher response before caching it, or instruct RRQ not to cache data at all, without changing shape of response or making it null
-- first class TypeScript support; RRQ is written in TypeScript, and hook return types are seamlessly inferred from fetcher return types
+- first class TypeScript support; RRQ is written in TypeScript, and argument/return types are seamlessly inferred from fetcher return types
 - small and simple codebase; RRQ weighs less than 3kb minzipped
 
 ## Dependencies

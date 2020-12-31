@@ -1,8 +1,8 @@
-import { createContext, useEffect, useRef, useContext } from 'react'
-import { useSelector, useDispatch, shallowEqual } from 'react-redux'
+import { createContext, useContext, useEffect, useRef } from 'react'
+import { batch, shallowEqual, useDispatch, useSelector } from 'react-redux'
 import { Dispatch } from 'redux'
 
-import { updateQueryState } from './actions'
+import { update, updateQueryState } from './actions'
 
 const fetchStateByKey: {
   [key: string]: { fetchMs: number; inFlight: { id: string; fetchMs: number }[] } | undefined
@@ -38,7 +38,8 @@ type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
 
 export type QueryResponse<D extends {}> = D | { queryData?: D | null }
 
-export interface QueryOptions {
+export interface QueryOptions<D> {
+  updater?: (data: D | undefined, newData: D) => D | undefined | null
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
@@ -50,7 +51,7 @@ export interface QueryStateOptions<D> {
 }
 
 /**
- * Calls fetcher and awaits response. Saves data to query branch under key and
+ * Calls fetcher and awaits response. Saves data to query branch at key and
  * returns response. What is saved to Redux depends on the value of
  * response.queryData:
  *
@@ -60,11 +61,13 @@ export interface QueryStateOptions<D> {
  * - If response.queryData is set, save queryData
  * - If response.queryData is set but is null or undefined, don't save anything
  *
- * @param key - Key in query branch under which to store response
+ * @param key - Key in query branch at which to store response
  * @param fetcher - Function that returns response with optional queryData
  *   property
  * @param options - Options object
  * @param options.dispatch - Dispatch function to send data to store (required)
+ * @param options.updater - If passed, this function takes data currently at
+ *     key, plus data in response, and returns updated data to be saved at key
  * @param options.dedupe - If true, don't call fetcher if another request was
  *   recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
@@ -78,9 +81,9 @@ export interface QueryStateOptions<D> {
 export async function query<R extends { queryData?: {} | null } | {} | null | undefined>(
   key: string,
   fetcher: () => Promise<R>,
-  options: QueryOptions & { dispatch: Dispatch },
+  options: QueryOptions<any> & { dispatch: Dispatch },
 ) {
-  const { dispatch, dedupe = false, dedupeMs = 2000, catchError = true } = options
+  const { dispatch, updater, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
   // Bail out if dedupe is true and another request was recently sent for key
   const before = Date.now()
@@ -131,32 +134,45 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
     throw error
   }
 
+  const saveData = (data: {}) => {
+    if (updater) {
+      // Results in only one rerender, not two: https://react-redux.js.org/api/batch#batch
+      batch(() => {
+        dispatch(updateQueryState({ key, state: { dataMs: afterMs, inFlight } }))
+        // @ts-ignore; newData property only for internal use, including it in Update interface would just be confusing
+        dispatch(update({ key, updater, newData: data }))
+      })
+    } else {
+      dispatch(updateQueryState({ key, state: { data: { ...data }, dataMs: afterMs, inFlight } }))
+    }
+  }
+
   if (response?.hasOwnProperty('queryData')) {
     const { queryData } = response as { queryData?: {} | null }
     if (queryData !== null && queryData !== undefined) {
       // If response.queryData is set and is neither null nor undefined, save response.queryData
-      dispatch(updateQueryState({ key, state: { data: { ...queryData }, dataMs: afterMs, inFlight } }))
+      saveData(queryData)
     } else {
       // If response.queryData is set but is null or undefined, save response as error
       dispatch(updateQueryState({ key, state: { error: { ...response } as {}, errorMs: afterMs, inFlight } }))
     }
   } else if (response !== null && response !== undefined) {
-    // If response.queryData isn't set, only save response if it's neither null nor undefined
-    dispatch(updateQueryState({ key, state: { data: { ...response } as {}, dataMs: afterMs, inFlight } }))
+    // If saveData.queryData isn't set, only save response if it's neither null nor undefined
+    saveData(response as {})
   }
 
   return response
 }
 
 /**
- * Hook calls fetcher and saves data to query branch under key. Immediately
- * returns query state (including data) under key, and subscribes to changes in
- * this query state.
+ * Hook calls fetcher and saves data to query branch at key. Immediately returns
+ * query state (including data) at key, and subscribes to changes in this query
+ * state.
  *
  * Data is only refetched if key changes; passing in a new fetcher function
  * alone doesn't refetch data.
  *
- * @param key - Key in query branch under which to store data; passing
+ * @param key - Key in query branch at which to store data; passing
  *   null/undefined ensures function is NOOP that returns undefined
  * @param fetcher - Function that returns response with optional queryData
  *   property
@@ -169,13 +185,16 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
  *   for this many ms (forever by default)
  * @param options.refetchKey - Pass in new value to force refetch without
  *   changing key
+ * @param options.updater - If passed, this function takes data currently at
+ *     key, plus data in response, and returns updated data to be saved at key
  * @param options.dedupe - If true, don't call fetcher if another request was
  *   recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
  *   many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught
  *   and assigned to data.error property (true by default)
- * @param options.stateKeys - Keys in query state
+ * @param options.stateKeys - Additional keys in query state to include in
+ *     return value
  * @param options.compare - Equality function compares previous query state with
  *   next query state; if it returns false, component rerenders, else it
  *   doesn't; uses shallowEqual by default
@@ -185,7 +204,7 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
 export function useQuery<D>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
-  options: QueryOptions &
+  options: QueryOptions<D> &
     QueryStateOptions<D> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
   const { stateKeys, compare, intervalMs = 0, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
