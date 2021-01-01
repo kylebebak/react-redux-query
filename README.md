@@ -170,7 +170,6 @@ branchName?: string // 'query'
 dedupe?: boolean // false
 dedupeMs?: number // 2000
 catchError?: boolean // true
-stateKeys?: StateKey[] // [], always includes 'data' and 'dataMs'
 compare?: (prev: QueryState, next: QueryState) => boolean // shallowEqual
 ```
 

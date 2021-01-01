@@ -13,7 +13,6 @@ export const ConfigContext = createContext<{
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
-  stateKeys?: StateKey[]
   compare?: (prev: QueryState<{}>, next: QueryState<{}>) => boolean
 }>({})
 
@@ -45,8 +44,8 @@ export interface QueryOptions<D> {
   catchError?: boolean
 }
 
-export interface QueryStateOptions<D> {
-  stateKeys?: StateKey[]
+export interface QueryStateOptions<D, K extends StateKey[] = []> {
+  stateKeys?: K
   compare?: (prev: QueryState<D>, next: QueryState<D>) => boolean
 }
 
@@ -201,18 +200,18 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
  *
  * @returns Query state at key
  */
-export function useQuery<D>(
+export function useQuery<D, K extends StateKey[] = []>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
-    QueryStateOptions<D> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+    QueryStateOptions<D, K> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
   const { stateKeys, compare, intervalMs = 0, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
   const config = useContext(ConfigContext)
 
   const dispatch = useDispatch()
   const intervalId = useRef(0)
-  const queryState = useQueryState<D>(key, { stateKeys, compare })
+  const queryState = useQueryState<D, K>(key, { stateKeys, compare })
 
   useEffect(() => {
     // Clear previous interval, create id for new interval
@@ -258,25 +257,23 @@ export function useQuery<D>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function getQueryState<D>(
+export function getQueryState<D, K extends StateKey[] = []>(
   queryBranch: QueryBranch<D>,
   key: string | null | undefined,
-  options: { stateKeys?: StateKey[] } = {},
+  options: { stateKeys?: K } = {},
 ) {
-  const { stateKeys = [] } = options
+  const stateKeys = (options.stateKeys || []) as K
 
-  if (!key) return {}
+  type PartialQueryState = Pick<QueryState<D>, 'data' | 'dataMs' | typeof stateKeys[number]>
+  const partialQueryState: PartialQueryState = {} as PartialQueryState
+
+  if (!key) return partialQueryState
   const queryState = queryBranch[key]
-  if (!queryState) return {}
+  if (!queryState) return partialQueryState
 
-  const partialQueryState: QueryState<D> = {
-    data: queryState.data,
-    dataMs: queryState.dataMs,
-    error: undefined,
-    errorMs: undefined,
-    fetchMs: undefined,
-    inFlight: undefined,
-  }
+  partialQueryState.data = queryState.data
+  partialQueryState.dataMs = queryState.dataMs
+
   // @ts-ignore
   for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
   return partialQueryState
@@ -297,11 +294,14 @@ export function getQueryState<D>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<D>(key: string | null | undefined, options: QueryStateOptions<D> = {}) {
+export function useQueryState<D, K extends StateKey[] = []>(
+  key: string | null | undefined,
+  options: QueryStateOptions<D, K> = {},
+) {
   const { stateKeys, compare } = options
-  const { branchName = 'query', stateKeys: configStateKeys, compare: configCompare } = useContext(ConfigContext)
+  const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
   return useSelector((state: ReduxState<D>) => {
-    return getQueryState<D>(state[branchName as 'query'], key, { stateKeys: stateKeys || configStateKeys })
+    return getQueryState<D, K>(state[branchName as 'query'], key, { stateKeys })
   }, compare || configCompare || shallowEqual)
 }
