@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Provider, useDispatch } from 'react-redux'
 import request, { SuccessResponse } from 'request-dot-js'
 
-import { query, useQuery, ConfigContext } from './rrq/query'
+import { query, useQuery, useQueryState, ConfigContext } from './rrq/query'
 import { update } from './rrq/actions'
 import store from './store'
 
@@ -130,6 +130,9 @@ function Component() {
 
   console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
   console.log('\n')
+
+  const { data: getData, inFlight: getInFlight } = useQueryState<GetData>('get', { stateKeys: ['inFlight'] })
+  if (!timePassed) console.log({ getData, getInFlight })
 
   return (
     <div onClick={() => setClickTs(Date.now())} style={{ width: 100, height: 100 }}>

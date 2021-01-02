@@ -247,39 +247,6 @@ export function useQuery<D, K extends StateKey[] = []>(
 }
 
 /**
- * Retrieves query state from Redux. Includes only data and dataMs properties by
- * default, unless additional stateKeys passed.
- *
- * @param queryBranch - Query branch of Redux state tree
- * @param key - Key in query branch
- * @param options - Options object
- * @param options.stateKeys - Keys in query state
- *
- * @returns Query state at key, with subset of properties specified by stateKeys
- */
-export function getQueryState<D, K extends StateKey[] = []>(
-  queryBranch: QueryBranch<D>,
-  key: string | null | undefined,
-  options: { stateKeys?: K } = {},
-) {
-  const stateKeys = (options.stateKeys || []) as K
-
-  type PartialQueryState = Pick<QueryState<D>, 'data' | 'dataMs' | typeof stateKeys[number]>
-  const partialQueryState: PartialQueryState = {} as PartialQueryState
-
-  if (!key) return partialQueryState
-  const queryState = queryBranch[key]
-  if (!queryState) return partialQueryState
-
-  partialQueryState.data = queryState.data
-  partialQueryState.dataMs = queryState.dataMs
-
-  // @ts-ignore
-  for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
-  return partialQueryState
-}
-
-/**
  * Hook retrieves query state for key from from Redux, and subscribes to changes
  * in query state. State object includes only data and dataMs properties by
  * default, and subscribes to changes in these properties only, unless
@@ -298,10 +265,22 @@ export function useQueryState<D, K extends StateKey[] = []>(
   key: string | null | undefined,
   options: QueryStateOptions<D, K> = {},
 ) {
-  const { stateKeys, compare } = options
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
-  return useSelector((state: ReduxState<D>) => {
-    return getQueryState<D, K>(state[branchName as 'query'], key, { stateKeys })
-  }, compare || configCompare || shallowEqual)
+  return useSelector((queryBranch: ReduxState<D>) => {
+    const stateKeys = (options.stateKeys || []) as K
+    // Return type picks QueryState properties specified in options.stateKeys, in addition to data and dataMs
+    type PartialQueryState = Pick<QueryState<D>, 'data' | 'dataMs' | typeof stateKeys[number]>
+    const partialQueryState: PartialQueryState = {} as PartialQueryState
+
+    if (!key) return partialQueryState
+    const queryState = queryBranch[branchName as 'query'][key]
+    if (!queryState) return partialQueryState
+
+    partialQueryState.data = queryState.data
+    partialQueryState.dataMs = queryState.dataMs
+    // @ts-ignore
+    for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
+    return partialQueryState
+  }, options.compare || configCompare || shallowEqual)
 }
