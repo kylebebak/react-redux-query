@@ -13,7 +13,6 @@ export const ConfigContext = createContext<{
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
-  stateKeys?: StateKey[]
   compare?: (prev: QueryState<{}>, next: QueryState<{}>) => boolean
 }>({})
 
@@ -36,10 +35,10 @@ export type QueryState<D extends {} = {}> = {
 
 type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
 
-export type QueryResponse<D extends {}> = D | { queryData?: D | null }
+export type QueryResponse<D extends {}> = D | { queryData: D | null | undefined } | null | undefined
 
 export interface QueryOptions<D> {
-  updater?: (data: D | undefined, newData: D) => D | undefined | null
+  updater?: (data: D | undefined, newData: D) => D | null | undefined
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
@@ -78,10 +77,12 @@ export interface QueryStateOptions<D> {
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
  */
-export async function query<R extends { queryData?: {} | null } | {} | null | undefined>(
+export async function query<R extends QueryResponse<{}>>(
   key: string,
   fetcher: () => Promise<R>,
-  options: QueryOptions<any> & { dispatch: Dispatch },
+  options: QueryOptions<R extends { queryData: null | undefined | infer D } ? D : NonNullable<R>> & {
+    dispatch: Dispatch
+  },
 ) {
   const { dispatch, updater, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
@@ -112,7 +113,7 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
   dispatch(updateQueryState({ key, state: { fetchMs, inFlight: inFlightBefore } }))
 
   // Call fetcher
-  let response: R = undefined as R
+  let response = undefined as R
   let error: undefined | {}
   try {
     response = await fetcher()
@@ -166,11 +167,11 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
 
 /**
  * Hook calls fetcher and saves data to query branch at key. Immediately returns
- * query state (including data) at key, and subscribes to changes in this query
- * state.
+ * query state (including data and dataMs) at key, and subscribes to changes in
+ * this query state.
  *
- * Data is only refetched if key changes; passing in a new fetcher function
- * alone doesn't refetch data.
+ * Data is only refetched if key, intervalMs, or refetchKey changes; passing in
+ * a new fetcher function alone doesn't refetch data.
  *
  * @param key - Key in query branch at which to store data; passing
  *   null/undefined ensures function is NOOP that returns undefined
@@ -207,7 +208,16 @@ export function useQuery<D>(
   options: QueryOptions<D> &
     QueryStateOptions<D> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { stateKeys, compare, intervalMs = 0, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
+  const {
+    stateKeys,
+    compare,
+    intervalMs = 0,
+    noRefetch = false,
+    noRefetchMs = 0,
+    refetchKey,
+    updater,
+    ...rest
+  } = options
   const config = useContext(ConfigContext)
 
   const dispatch = useDispatch()
@@ -229,7 +239,7 @@ export function useQuery<D>(
 
     const doQuery = async (id: number) => {
       if (intervalMs > 0 && intervalId.current !== id) return
-      await query(key, fetcher, { ...config, ...rest, dispatch })
+      await query(key, fetcher, { ...config, ...rest, updater: updater as QueryOptions<any>['updater'], dispatch })
       // "pseudo-recursive" interval call means call stack doesn't grow: https://stackoverflow.com/questions/48736331
       if (intervalMs > 0) setTimeout(() => doQuery(id), intervalMs)
     }
@@ -248,41 +258,6 @@ export function useQuery<D>(
 }
 
 /**
- * Retrieves query state from Redux. Includes only data and dataMs properties by
- * default, unless additional stateKeys passed.
- *
- * @param queryBranch - Query branch of Redux state tree
- * @param key - Key in query branch
- * @param options - Options object
- * @param options.stateKeys - Keys in query state
- *
- * @returns Query state at key, with subset of properties specified by stateKeys
- */
-export function getQueryState<D>(
-  queryBranch: QueryBranch<D>,
-  key: string | null | undefined,
-  options: { stateKeys?: StateKey[] } = {},
-) {
-  const { stateKeys = [] } = options
-
-  if (!key) return {}
-  const queryState = queryBranch[key]
-  if (!queryState) return {}
-
-  const partialQueryState: QueryState<D> = {
-    data: queryState.data,
-    dataMs: queryState.dataMs,
-    error: undefined,
-    errorMs: undefined,
-    fetchMs: undefined,
-    inFlight: undefined,
-  }
-  // @ts-ignore
-  for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
-  return partialQueryState
-}
-
-/**
  * Hook retrieves query state for key from from Redux, and subscribes to changes
  * in query state. State object includes only data and dataMs properties by
  * default, and subscribes to changes in these properties only, unless
@@ -298,10 +273,24 @@ export function getQueryState<D>(
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
 export function useQueryState<D>(key: string | null | undefined, options: QueryStateOptions<D> = {}) {
-  const { stateKeys, compare } = options
-  const { branchName = 'query', stateKeys: configStateKeys, compare: configCompare } = useContext(ConfigContext)
+  const { stateKeys = [], compare } = options
+  const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
-  return useSelector((state: ReduxState<D>) => {
-    return getQueryState<D>(state[branchName as 'query'], key, { stateKeys: stateKeys || configStateKeys })
+  return useSelector((queryBranch: ReduxState<D>) => {
+    if (!key) return {}
+    const queryState = queryBranch[branchName as 'query'][key]
+    if (!queryState) return {}
+
+    const partialQueryState: QueryState<D> = {
+      data: queryState.data,
+      dataMs: queryState.dataMs,
+      error: undefined,
+      errorMs: undefined,
+      fetchMs: undefined,
+      inFlight: undefined,
+    }
+    // @ts-ignore
+    for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
+    return partialQueryState
   }, compare || configCompare || shallowEqual)
 }

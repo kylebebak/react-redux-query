@@ -127,7 +127,7 @@ default, which means any change in `data` triggers a rerender.
 RRQ ships with the following [Redux actions](https://redux.js.org/faq/actions):
 
 - `save`: saves data at key
-- `update`: like save, but takes an updater function, which receives the `data` at key and must return updated data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes data at key from query branch
+- `update`: like save, but takes an updater function, which receives the `data` at key and must return updated data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes query state object at key from query branch
 - `updateQueryState`: updates query state object (you probably don't need to use this)
 
 These are really action creators (functions that return action objects). You can use the first two to overwrite the `data` at a given key in the query branch. For example, in a save user callback:
@@ -170,7 +170,6 @@ branchName?: string // 'query'
 dedupe?: boolean // false
 dedupeMs?: number // 2000
 catchError?: boolean // true
-stateKeys?: StateKey[] // [], always includes 'data' and 'dataMs'
 compare?: (prev: QueryState, next: QueryState) => boolean // shallowEqual
 ```
 
