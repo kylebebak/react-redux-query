@@ -72,7 +72,7 @@ export interface QueryStateOptions<D> {
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
  *   many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught
- *   and assigned to data.error property (true by default)
+ *   and assigned to queryState.error property (true by default)
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
@@ -193,16 +193,16 @@ export async function query<R extends QueryResponse<{}>>(
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
  *   many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught
- *   and assigned to data.error property (true by default)
+ *   and assigned to queryState.error property (true by default)
  * @param options.stateKeys - Additional keys in query state to include in
- *     return value
+ *   return value (only data and dataMs included by default)
  * @param options.compare - Equality function compares previous query state with
  *   next query state; if it returns false, component rerenders, else it
  *   doesn't; uses shallowEqual by default
  *
  * @returns Query state at key
  */
-export function useQuery<D>(
+export function useQuery<D = {}>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
@@ -272,7 +272,7 @@ export function useQuery<D>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<D>(key: string | null | undefined, options: QueryStateOptions<D> = {}) {
+export function useQueryState<D = {}>(key: string | null | undefined, options: QueryStateOptions<D> = {}) {
   const { stateKeys = [], compare } = options
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
