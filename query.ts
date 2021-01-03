@@ -35,10 +35,10 @@ export type QueryState<D extends {} = {}> = {
 
 type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
 
-export type QueryResponse<D extends {}> = D | { queryData?: D | null }
+export type QueryResponse<D extends {}> = D | { queryData: D | null | undefined } | null | undefined
 
 export interface QueryOptions<D> {
-  updater?: (data: D | undefined, newData: D) => D | undefined | null
+  updater?: (data: D | undefined, newData: D) => D | null | undefined
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
@@ -72,15 +72,17 @@ export interface QueryStateOptions<D, K extends StateKey[] = []> {
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
  *   many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught
- *   and assigned to data.error property (true by default)
+ *   and assigned to queryState.error property (true by default)
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
  *     fetcher throws error
  */
-export async function query<R extends { queryData?: {} | null } | {} | null | undefined>(
+export async function query<R extends QueryResponse<{}>>(
   key: string,
   fetcher: () => Promise<R>,
-  options: QueryOptions<any> & { dispatch: Dispatch },
+  options: QueryOptions<R extends { queryData: null | undefined | infer D } ? D : NonNullable<R>> & {
+    dispatch: Dispatch
+  },
 ) {
   const { dispatch, updater, dedupe = false, dedupeMs = 2000, catchError = true } = options
 
@@ -111,7 +113,7 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
   dispatch(updateQueryState({ key, state: { fetchMs, inFlight: inFlightBefore } }))
 
   // Call fetcher
-  let response: R = undefined as R
+  let response = undefined as R
   let error: undefined | {}
   try {
     response = await fetcher()
@@ -165,11 +167,11 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
 
 /**
  * Hook calls fetcher and saves data to query branch at key. Immediately returns
- * query state (including data) at key, and subscribes to changes in this query
- * state.
+ * query state (including data and dataMs) at key, and subscribes to changes in
+ * this query state.
  *
- * Data is only refetched if key changes; passing in a new fetcher function
- * alone doesn't refetch data.
+ * Data is only refetched if key, intervalMs, or refetchKey changes; passing in
+ * a new fetcher function alone doesn't refetch data.
  *
  * @param key - Key in query branch at which to store data; passing
  *   null/undefined ensures function is NOOP that returns undefined
@@ -191,9 +193,9 @@ export async function query<R extends { queryData?: {} | null } | {} | null | un
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
  *   many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught
- *   and assigned to data.error property (true by default)
+ *   and assigned to queryState.error property (true by default)
  * @param options.stateKeys - Additional keys in query state to include in
- *     return value
+ *   return value (only data and dataMs included by default)
  * @param options.compare - Equality function compares previous query state with
  *   next query state; if it returns false, component rerenders, else it
  *   doesn't; uses shallowEqual by default
@@ -206,7 +208,16 @@ export function useQuery<D, K extends StateKey[] = []>(
   options: QueryOptions<D> &
     QueryStateOptions<D, K> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
-  const { stateKeys, compare, intervalMs = 0, noRefetch = false, noRefetchMs = 0, refetchKey, ...rest } = options
+  const {
+    stateKeys,
+    compare,
+    intervalMs = 0,
+    noRefetch = false,
+    noRefetchMs = 0,
+    refetchKey,
+    updater,
+    ...rest
+  } = options
   const config = useContext(ConfigContext)
 
   const dispatch = useDispatch()
@@ -228,7 +239,7 @@ export function useQuery<D, K extends StateKey[] = []>(
 
     const doQuery = async (id: number) => {
       if (intervalMs > 0 && intervalId.current !== id) return
-      await query(key, fetcher, { ...config, ...rest, dispatch })
+      await query(key, fetcher, { ...config, ...rest, updater: updater as QueryOptions<any>['updater'], dispatch })
       // "pseudo-recursive" interval call means call stack doesn't grow: https://stackoverflow.com/questions/48736331
       if (intervalMs > 0) setTimeout(() => doQuery(id), intervalMs)
     }

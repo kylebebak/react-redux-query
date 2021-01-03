@@ -14,7 +14,7 @@ function Component() {
   const [clickTs, setClickTs] = useState(0)
 
   useEffect(() => {
-    setTimeout(() => setTimePassed(true), 5000)
+    setTimeout(() => setTimePassed(true), 10000)
     dispatch(
       update({
         key: 'get',
@@ -30,7 +30,7 @@ function Component() {
         const res = await request<GetData>('https://httpbin.org/get')
         return { ...res, queryData: res.type === 'success' ? res : null }
       },
-      { dispatch },
+      { dispatch, updater: (_, newData) => newData },
     ).then((res) => {
       if (res?.queryData) console.log(res.queryData.data.origin)
       if (res?.type === 'success') console.log(res.data.origin)
@@ -45,7 +45,7 @@ function Component() {
         if (res.type === 'success') return res
         return null
       },
-      { dispatch, dedupe: true },
+      { dispatch, dedupe: true, updater: (_, newData) => newData },
     ).then((res) => {
       console.log('fetcher call deduped, res is undefined:', res === undefined)
     })
@@ -55,7 +55,8 @@ function Component() {
     'useQueryGet',
     async () => {
       const res = await request<GetData>('https://httpbin.org/get')
-      return { ...res, queryData: res.type === 'success' ? res : null }
+      if (res.type === 'success') return res
+      return null
     },
     { dedupe: true },
   )
@@ -121,7 +122,7 @@ function Component() {
       return { ...res, queryData: res.type === 'success' ? res : null }
     },
     {
-      intervalMs: timePassed ? undefined : 1500,
+      intervalMs: timePassed ? undefined : 2500,
       stateKeys: ['inFlight'],
       refetchKey: clickTs,
       updater: (_, newData) => newData,

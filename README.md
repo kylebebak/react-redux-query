@@ -5,7 +5,7 @@
 
 A few hooks and functions for declarative data fetching, caching, sharing, automatic updates, and request deduplication. Like SWR and React Query, but uses Redux for persistence.
 
-Flexible, small and very simple. Written in TypeScript.
+Flexible, small and simple. Written in TypeScript.
 
 ## Installation
 
@@ -92,7 +92,7 @@ RRQ also exports a lower-level async `query` function that has the same signatur
 
 This function is used by `useQuery`. It calls `fetcher`, awaits the response, throws data into Redux if appropriate, and returns the response as-is.
 
-You should use this function wherever you want to fetch and cache data outside of the render lifecycle. For example, in a save user callback:
+You should use this function wherever you want to fetch and cache data outside of lifecycle methods. For example, in a save user callback:
 
 ```ts
 import { query } from 'react-redux-query'
@@ -105,6 +105,8 @@ const handleSaveUser = async (userId) => {
   }
 }
 ```
+
+>Because it's not a hook, the `query` function also lets you use RRQ in class components. After you throw data into Redux, you can read it out of the query branch and pass it to your components in `mapStateToProps`.
 
 The `options` object must contain a `dispatch` property with the Redux dispatch function (this is used to throw data into Redux). Feel free to write a wrapper around `query` that passes in `dispatch` for you if you don't want to pass it every time.
 
@@ -127,7 +129,7 @@ default, which means any change in `data` triggers a rerender.
 RRQ ships with the following [Redux actions](https://redux.js.org/faq/actions):
 
 - `save`: saves data at key
-- `update`: like save, but takes an updater function, which receives the `data` at key and must return updated data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes data at key from query branch
+- `update`: like save, but takes an updater function, which receives the `data` at key and must return updated data, `undefined`, or `null`; returning `undefined` is a NOOP, while returning `null` removes query state object at key from query branch
 - `updateQueryState`: updates query state object (you probably don't need to use this)
 
 These are really action creators (functions that return action objects). You can use the first two to overwrite the `data` at a given key in the query branch. For example, in a save user callback:
@@ -157,8 +159,8 @@ const handleSaveUser = async (userId, body) => {
 - `updater`: If passed, this function takes data currently at key, plus data in response, and returns updated data to be saved at key
 - `dedupe`: If true, don't call fetcher if another request was recently sent for key
 - `dedupeMs`: If dedupe is true, dedupe behavior active for this many ms (2000 by default)
-- `catchError`: If true, any error thrown by fetcher is caught and assigned to data.error property (true by default)
-- `stateKeys`: Additional keys in query state to include in return value
+- `catchError`: If true, any error thrown by fetcher is caught and assigned to queryState.error property (true by default)
+- `stateKeys`: Additional keys in query state to include in return value (only data and dataMs included by default)
 - `compare`: Equality function compares previous query state with next query state; if it returns false, component rerenders, else it doesn't; uses shallowEqual by default
 
 ### Custom config context
@@ -204,9 +206,10 @@ Make sure you enable `esModuleInterop` if you're using TypeScript to compile you
 
 Why not SWR or React Query?
 
-- uses Redux for data persistence and automatic updates; performant, community-standard solution for managing application state; easy to modify and subscribe to stored data, and easy to extend RRQ's read/write behavior by writing your own hooks/selectors/actions
+- RRQ uses Redux for data persistence and automatic updates; performant, community-standard solution for managing application state; easy to modify and subscribe to stored data, and easy to extend RRQ's read/write behavior by writing your own hooks/selectors/actions
 - `queryData` property makes it easy to transform fetcher response before caching it, or instruct RRQ not to cache data at all, without changing shape of response or making it null
 - first class TypeScript support; RRQ is written in TypeScript, and argument/return types are seamlessly inferred from fetcher return types
+- not only hooks; `query` function means RRQ can be used outside of lifecycle methods, or in class components
 - small and simple codebase; RRQ weighs less than 3kb minzipped
 
 ## Dependencies
@@ -215,8 +218,8 @@ React and Redux.
 
 ## Development and tests
 
-Clone the repo, then `yarn`, then `yarn test`. This runs tests on the vanilla JS parts of RRQ, but none of the React hooks.
+Clone the repo, then `yarn`, then `yarn test`. This runs tests on the vanilla JS parts of RRQ, but none of the React code.
 
-To test the React hooks, run `cd test_app`, then `yarn`.
+To test the React code, run `cd test_app`, then `yarn`.
 
 Then run `yarn start` or `yarn test` to run React test app or to run tests on test app.
