@@ -24,6 +24,8 @@ export interface QueryBranch<D extends {} = any> {
   [key: string]: QueryState<D> | undefined
 }
 
+export type PartialQueryState<K extends StateKey[], D> = Pick<QueryState<D>, 'data' | 'dataMs' | K[number]>
+
 export type QueryState<D extends {} = {}> = {
   data?: D
   dataMs?: number
@@ -46,7 +48,7 @@ export interface QueryOptions<D> {
 
 export interface QueryStateOptions<K extends StateKey[], D> {
   stateKeys?: K
-  compare?: (prev: QueryState<D>, next: QueryState<D>) => boolean
+  compare?: (prev: PartialQueryState<K, D>, next: PartialQueryState<K, D>) => boolean
 }
 
 /**
@@ -277,14 +279,13 @@ export function useQueryState<K extends StateKey[] = [], D = {}>(
   key: string | null | undefined,
   options: QueryStateOptions<K, D> = {},
 ) {
-  // K before D in signature, because K can be inferred, while D can't
+  // K before D in useQueryState signature, because K can be inferred, while D can't
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
   return useSelector((queryBranch: ReduxState<D>) => {
     const stateKeys = (options.stateKeys || []) as K
     // Return type picks QueryState properties specified in options.stateKeys, in addition to data and dataMs
-    type PartialQueryState = Pick<QueryState<D>, 'data' | 'dataMs' | typeof stateKeys[number]>
-    const partialQueryState: PartialQueryState = {} as PartialQueryState
+    const partialQueryState = {} as PartialQueryState<K, D>
 
     if (!key) return partialQueryState
     const queryState = queryBranch[branchName as 'query'][key]
@@ -295,5 +296,5 @@ export function useQueryState<K extends StateKey[] = [], D = {}>(
     // @ts-ignore
     for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
     return partialQueryState
-  }, options.compare || configCompare || shallowEqual)
+  }, options.compare || (configCompare as QueryStateOptions<K, D>['compare']) || shallowEqual)
 }

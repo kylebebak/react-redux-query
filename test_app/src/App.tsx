@@ -111,7 +111,8 @@ function Component() {
   // This poll causes no rerendering, because compare fn always returns true
   useQuery('pollNeverRerender', async () => await request<GetData>('https://httpbin.org/get'), {
     intervalMs: 5 * 1000,
-    compare: () => true,
+    compare: (prev, next) => true,
+    stateKeys: ['fetchMs'],
   })
 
   // This poll causes two rerenders each time fetcher is called (one when request is sent, one when request completes)
