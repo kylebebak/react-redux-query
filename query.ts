@@ -44,7 +44,7 @@ export interface QueryOptions<D> {
   catchError?: boolean
 }
 
-export interface QueryStateOptions<D, K extends StateKey[] = []> {
+export interface QueryStateOptions<K extends StateKey[], D> {
   stateKeys?: K
   compare?: (prev: QueryState<D>, next: QueryState<D>) => boolean
 }
@@ -202,11 +202,11 @@ export async function query<R extends QueryResponse<{}>>(
  *
  * @returns Query state at key
  */
-export function useQuery<D, K extends StateKey[] = []>(
+export function useQuery<K extends StateKey[] = [], D = any>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
-    QueryStateOptions<D, K> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+    QueryStateOptions<K, D> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
 ) {
   const {
     stateKeys,
@@ -222,7 +222,7 @@ export function useQuery<D, K extends StateKey[] = []>(
 
   const dispatch = useDispatch()
   const intervalId = useRef(0)
-  const queryState = useQueryState<D, K>(key, { stateKeys, compare })
+  const queryState = useQueryState<K, D>(key, { stateKeys, compare })
 
   useEffect(() => {
     // Clear previous interval, create id for new interval
@@ -272,10 +272,11 @@ export function useQuery<D, K extends StateKey[] = []>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<D, K extends StateKey[] = []>(
+export function useQueryState<K extends StateKey[] = [], D = any>(
   key: string | null | undefined,
-  options: QueryStateOptions<D, K> = {},
+  options: QueryStateOptions<K, D> = {},
 ) {
+  // K before D in signature, because K can be inferred, while D can't; if user wants to specify D, they HAVE to specify K first
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
   return useSelector((queryBranch: ReduxState<D>) => {

@@ -123,7 +123,7 @@ function Component() {
     },
     {
       intervalMs: timePassed ? undefined : 2500,
-      stateKeys: ['inFlight'],
+      stateKeys: ['inFlight', 'error'],
       refetchKey: clickTs,
       updater: (_, newData) => newData,
     },
@@ -132,8 +132,14 @@ function Component() {
   console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
   console.log('\n')
 
-  const { data: getData, inFlight: getInFlight } = useQueryState<GetData>('get', { stateKeys: ['inFlight'] })
-  if (!timePassed) console.log({ getData, getInFlight })
+  const { data: getData, inFlight: getInFlight } = useQueryState<('inFlight' | 'error')[], GetData>('get', {
+    stateKeys: ['inFlight', 'error'],
+  })
+  if (!timePassed) console.log({ getData: getData?.headers, getInFlight })
+
+  useQueryState('get', { stateKeys: ['error', 'errorMs'] })
+
+  useQueryState<[]>('get')
 
   return (
     <div onClick={() => setClickTs(Date.now())} style={{ width: 100, height: 100 }}>
