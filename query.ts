@@ -200,9 +200,9 @@ export async function query<R extends QueryResponse<{}>>(
  *   next query state; if it returns false, component rerenders, else it
  *   doesn't; uses shallowEqual by default
  *
- * @returns Query state at key
+ * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQuery<K extends StateKey[] = [], D = any>(
+export function useQuery<K extends StateKey[] = [], D = {}>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
@@ -265,18 +265,19 @@ export function useQuery<K extends StateKey[] = [], D = any>(
  *
  * @param key - Key in query branch
  * @param options - Options object
- * @param options.stateKeys - Keys in query state
+ * @param options.stateKeys - Additional keys in query state to include in
+ *   return value (only data and dataMs included by default)
  * @param options.compare - Equality function compares previous query state with
  *   next query state; if it returns false, component rerenders, else it
  *   doesn't; uses shallowEqual by default
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<K extends StateKey[] = [], D = any>(
+export function useQueryState<K extends StateKey[] = [], D = {}>(
   key: string | null | undefined,
   options: QueryStateOptions<K, D> = {},
 ) {
-  // K before D in signature, because K can be inferred, while D can't; if user wants to specify D, they HAVE to specify K first
+  // K before D in signature, because K can be inferred, while D can't
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
   return useSelector((queryBranch: ReduxState<D>) => {

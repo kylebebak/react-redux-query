@@ -132,14 +132,18 @@ function Component() {
   console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
   console.log('\n')
 
-  const { data: getData, inFlight: getInFlight } = useQueryState<('inFlight' | 'error')[], GetData>('get', {
-    stateKeys: ['inFlight', 'error'],
-  })
-  if (!timePassed) console.log({ getData: getData?.headers, getInFlight })
+  const { data: getData, inFlight: getInFlight } = useQueryState<('inFlight' | 'error')[], SuccessResponse<GetData>>(
+    'get',
+    {
+      stateKeys: ['inFlight', 'error'],
+    },
+  )
+  if (!timePassed) console.log({ getData, getInFlight })
 
   useQueryState('get', { stateKeys: ['error', 'errorMs'] })
 
   useQueryState<[]>('get')
+  useQueryState('get')
 
   return (
     <div onClick={() => setClickTs(Date.now())} style={{ width: 100, height: 100 }}>
