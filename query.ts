@@ -68,7 +68,7 @@ export interface QueryStateOptions<K extends StateKey[], D> {
  * @param options - Options object
  * @param options.dispatch - Dispatch function to send data to store (required)
  * @param options.updater - If passed, this function takes data currently at
- *     key, plus data in response, and returns updated data to be saved at key
+ *   key, plus data in response, and returns updated data to be saved at key
  * @param options.dedupe - If true, don't call fetcher if another request was
  *   recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
@@ -77,7 +77,7 @@ export interface QueryStateOptions<K extends StateKey[], D> {
  *   and assigned to queryState.error property (true by default)
  *
  * @returns Response, or undefined if fetcher call gets deduped, or undefined if
- *     fetcher throws error
+ *   fetcher throws error
  */
 export async function query<R extends QueryResponse<{}>>(
   key: string,
@@ -175,10 +175,10 @@ export async function query<R extends QueryResponse<{}>>(
  * Data is only refetched if key, intervalMs, or refetchKey changes; passing in
  * a new fetcher function alone doesn't refetch data.
  *
- * @param key - Key in query branch at which to store data; passing
- *   null/undefined ensures function is NOOP that returns undefined
+ * @param key - Key in query branch at which to store data; if null/undefined,
+ *   fetcher not called
  * @param fetcher - Function that returns response with optional queryData
- *   property
+ *   property; if null/undefined, fetcher not called
  * @param options - Options object
  * @param options.intervalMs - Interval between end of fetcher call and next
  *   fetcher call
@@ -189,7 +189,7 @@ export async function query<R extends QueryResponse<{}>>(
  * @param options.refetchKey - Pass in new value to force refetch without
  *   changing key
  * @param options.updater - If passed, this function takes data currently at
- *     key, plus data in response, and returns updated data to be saved at key
+ *   key, plus data in response, and returns updated data to be saved at key
  * @param options.dedupe - If true, don't call fetcher if another request was
  *   recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this
@@ -237,7 +237,7 @@ export function useQuery<K extends StateKey[] = [], D = {}>(
       // User specified a positive value for noRefetchMs; determine if we should we refetch or not
       if (Date.now() - queryState.dataMs <= noRefetchMs) return
     }
-    if (!key || !fetcher) return
+    if (key === null || key === undefined || !fetcher) return
 
     const doQuery = async (id: number) => {
       if (intervalMs > 0 && intervalId.current !== id) return

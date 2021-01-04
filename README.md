@@ -57,6 +57,8 @@ function Profile() {
 
 This way you can return the unmodified response from your fetcher, even if it's a "bad" response, while instructing RRQ to not overwrite your `data` in Redux. In this case, the `error` variable would contain the response for status codes other than `200`, or an error object if fetcher throws an error.
 
+If you don't want `useQuery` to call the fetcher, just pass `null` or `undefined` for either the key or the fetcher.
+
 ### Setup
 
 RRQ uses Redux to cache fetched data, and allows components to subscribe to changes in fetched data. To use RRQ in your app, you need to use [Redux](https://react-redux.js.org/).
