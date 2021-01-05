@@ -13,12 +13,8 @@ export const ConfigContext = createContext<{
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
-  compare?: (prev: QueryState<{}>, next: QueryState<{}>) => boolean
+  compare?: (prev: QueryState<any>, next: QueryState<any>) => boolean
 }>({})
-
-interface ReduxState<D extends {} = {}> {
-  query: QueryBranch<D>
-}
 
 export interface QueryBranch<D extends {} = any> {
   [key: string]: QueryState<D> | undefined
@@ -26,7 +22,7 @@ export interface QueryBranch<D extends {} = any> {
 
 export type PartialQueryState<K extends StateKey[], D> = Pick<QueryState<D>, 'data' | 'dataMs' | K[number]>
 
-export type QueryState<D extends {} = {}> = {
+export type QueryState<D extends {} = any> = {
   data?: D
   dataMs?: number
   error?: {}
@@ -35,9 +31,9 @@ export type QueryState<D extends {} = {}> = {
   inFlight?: { id: string; fetchMs: number }[]
 }
 
-type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
+export type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
 
-export type QueryResponse<D extends {}> = D | { queryData: D | null | undefined } | null | undefined
+export type QueryResponse<D extends {} = any> = D | { queryData: D | null | undefined } | null | undefined
 
 export interface QueryOptions<D> {
   updater?: (data: D | undefined, newData: D) => D | null | undefined
@@ -204,7 +200,7 @@ export async function query<R extends QueryResponse<{}>>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQuery<K extends StateKey[] = [], D = {}>(
+export function useQuery<K extends StateKey[] = [], D = any>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
@@ -275,20 +271,20 @@ export function useQuery<K extends StateKey[] = [], D = {}>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<K extends StateKey[] = [], D = {}>(
+export function useQueryState<K extends StateKey[] = [], D = any>(
   key: string | null | undefined,
   options: QueryStateOptions<K, D> = {},
 ) {
   // K before D in useQueryState signature, because K can be inferred, while D can't
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
-  return useSelector((queryBranch: ReduxState<D>) => {
+  return useSelector((state: { query: QueryBranch<D> }) => {
     const stateKeys = (options.stateKeys || []) as K
     // Return type picks QueryState properties specified in options.stateKeys, in addition to data and dataMs
     const partialQueryState = {} as PartialQueryState<K, D>
 
     if (!key) return partialQueryState
-    const queryState = queryBranch[branchName as 'query'][key]
+    const queryState = state[branchName as 'query'][key]
     if (!queryState) return partialQueryState
 
     partialQueryState.data = queryState.data

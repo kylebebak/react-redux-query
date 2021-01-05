@@ -30,9 +30,9 @@ export default function reduce(state: QueryBranch = {}, action: Action): QueryBr
     }
 
     case 'REACT_REDUX_QUERY_UPDATE_DATA': {
-      const { key, updater, newData } = action.payload as Update<any> & { newData: any }
+      const { key, updater, newData } = action.payload as Update<{}> & { newData: {} }
 
-      const data = (updater as NonNullable<QueryOptions<any>['updater']>)(state[key]?.data, newData)
+      const data = (updater as NonNullable<QueryOptions<{}>['updater']>)(state[key]?.data, newData)
       if (data === undefined) return state
       if (data === null) {
         const { [key]: _, ...rest } = state
