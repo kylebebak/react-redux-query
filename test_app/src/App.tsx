@@ -6,7 +6,7 @@ import { query, useQuery, useQueryState, ConfigContext } from './rrq/query'
 import { update } from './rrq/actions'
 import store from './store'
 
-type GetData = { origin: string; url: string; headers: { [key: string]: string } }
+type GetData = { origin: string; url: string; headers: { [key: string]: string }, args: { [key: string]: string } }
 
 function Component() {
   const dispatch = useDispatch()
@@ -113,24 +113,27 @@ function Component() {
     intervalMs: 5 * 1000,
     compare: (prev, next) => true,
     stateKeys: ['fetchMs'],
+    intervalRedefineFetcher: false,
   })
 
+  // Assign this outside of fetcher so we can see that fetcher is redefined on each interval call with default intervalRedefineFetcher=true
+  const now = Date.now()
   // This poll causes two rerenders each time fetcher is called (one when request is sent, one when request completes)
   const { data: pollRes, dataMs: pollResMs, inFlight: pollInFlight } = useQuery(
     'useQueryPoll',
     async () => {
-      const res = await request<GetData>('https://httpbin.org/get')
+      const res = await request<GetData>(`https://httpbin.org/get?ts=${now}`)
       return { ...res, queryData: res.type === 'success' ? res : null }
     },
     {
-      intervalMs: timePassed ? undefined : 2500,
+      intervalMs: timePassed ? undefined : 1000,
       stateKeys: ['inFlight', 'error'],
       refetchKey: clickTs,
       updater: (_, newData) => newData,
     },
   )
 
-  console.log({ pollRes: pollRes?.data.origin, pollResMs, pollInFlight })
+  console.log({ pollResOrigin: pollRes?.data.origin, pollResTs: pollRes?.data.args.ts, pollResMs, pollInFlight })
   console.log('\n')
 
   const { data: getData, inFlight: getInFlight } = useQueryState<('inFlight' | 'error')[], SuccessResponse<GetData>>(

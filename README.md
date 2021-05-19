@@ -88,6 +88,8 @@ const App = () => {
 
 To do polling with `useQuery`, just pass the `intervalMs` property in the options. After `fetcher` returns, it's called again after `intervalMs`. The actual polling interval depends on how long fetcher takes to return, which means polling interval adapts to network and server speed.
 
+When polling, to ensure the fetcher is redefined each time it's called, `useQuery` updates a piece of state that forces its component to rerender. If you have a fetcher that only needs to be defined once, and you want to avoid an extra rerender each time it's called, pass `false` for `intervalRedefineFetcher` in the options.
+
 ### `query` function
 
 RRQ also exports a lower-level async `query` function that has the same signature as `useQuery`: `(key: string, fetcher: () => Promise<{}>, options: {})`.
@@ -155,6 +157,7 @@ const handleSaveUser = async (userId, body) => {
 ### All `useQuery` options
 
 - `intervalMs`: Interval between end of fetcher call and next fetcher call
+- `intervalRedefineFetcher`: If true, fetcher is redefined each time it's called on interval, by forcing component to rerender (true by default)
 - `noRefetch`: If true, don't refetch if there's already data at key
 - `noRefetchMs`: If noRefetch is true, noRefetch behavior active for this many ms (forever by default)
 - `refetchKey`: Pass in new value to force refetch without changing key

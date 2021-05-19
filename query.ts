@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { batch, shallowEqual, useDispatch, useSelector } from 'react-redux'
 import { Dispatch } from 'redux'
 
@@ -178,6 +178,9 @@ export async function query<R extends QueryResponse<{}>>(
  * @param options - Options object
  * @param options.intervalMs - Interval between end of fetcher call and next
  *   fetcher call
+ * @param options.intervalRedefineFetcher - If true, fetcher is redefined each
+ *   time it's called on interval, by forcing component to rerender (true by
+ *   default)
  * @param options.noRefetch - If true, don't refetch if there's already data at
  *   key
  * @param options.noRefetchMs - If noRefetch is true, noRefetch behavior active
@@ -204,12 +207,19 @@ export function useQuery<K extends StateKey[] = [], D = any>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
-    QueryStateOptions<K, D> & { intervalMs?: number; noRefetch?: boolean; noRefetchMs?: number; refetchKey?: any } = {},
+    QueryStateOptions<K, D> & {
+      intervalMs?: number
+      intervalRedefineFetcher?: boolean
+      noRefetch?: boolean
+      noRefetchMs?: number
+      refetchKey?: any
+    } = {},
 ) {
   const {
     stateKeys,
     compare,
     intervalMs = 0,
+    intervalRedefineFetcher = true,
     noRefetch = false,
     noRefetchMs = 0,
     refetchKey,
@@ -217,14 +227,16 @@ export function useQuery<K extends StateKey[] = [], D = any>(
     ...rest
   } = options
   const config = useContext(ConfigContext)
-
   const dispatch = useDispatch()
-  const intervalId = useRef(0)
+
+  const [intervalId, setIntervalId] = useState(0)
+  const intervalTimeoutIdRef = useRef<number>()
+
   const queryState = useQueryState<K, D>(key, { stateKeys, compare })
 
   useEffect(() => {
-    // Clear previous interval, create id for new interval
-    intervalId.current = intervalId.current + 1
+    // If we have pending interval call to query, clear it; we're about to query again anyway
+    clearTimeout(intervalTimeoutIdRef.current)
 
     // Should we return early?
     if (queryState.data && noRefetch) {
@@ -235,20 +247,24 @@ export function useQuery<K extends StateKey[] = [], D = any>(
     }
     if (key === null || key === undefined || !fetcher) return
 
-    const doQuery = async (id: number) => {
-      if (intervalMs > 0 && intervalId.current !== id) return
+    const doQuery = async () => {
       await query(key, fetcher, { ...config, ...rest, updater: updater as QueryOptions<any>['updater'], dispatch })
-      // "pseudo-recursive" interval call means call stack doesn't grow: https://stackoverflow.com/questions/48736331
-      if (intervalMs > 0) setTimeout(() => doQuery(id), intervalMs)
+      if (intervalMs <= 0) return
+
+      // Force this effect to run again after intervalMs; "pseudo-recursive" call means call stack doesn't grow
+      intervalTimeoutIdRef.current = window.setTimeout(() => {
+        if (intervalRedefineFetcher) setIntervalId((id) => id + 1)
+        else doQuery()
+      }, intervalMs)
     }
 
-    doQuery(intervalId.current)
-  }, [key, intervalMs, refetchKey]) // eslint-disable-line
+    doQuery()
+  }, [key, intervalMs, intervalRedefineFetcher, refetchKey, intervalId]) // eslint-disable-line
 
   // Also clear interval when component unmounts
   useEffect(() => {
     return () => {
-      intervalId.current = -1
+      clearTimeout(intervalTimeoutIdRef.current)
     }
   }, [])
 
