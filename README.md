@@ -157,7 +157,7 @@ const handleSaveUser = async (userId, body) => {
 ### All `useQuery` options
 
 - `intervalMs`: Interval between end of fetcher call and next fetcher call
-- `intervalRedefineFetcher`: If true, fetcher is redefined each time it's called on interval, by forcing component to rerender (true by default)
+- `intervalRedefineFetcher`: If true, fetcher is redefined each time it's called on interval, by forcing component to rerender (false by default)
 - `noRefetch`: If true, don't refetch if there's already data at key
 - `noRefetchMs`: If noRefetch is true, noRefetch behavior active for this many ms (forever by default)
 - `refetchKey`: Pass in new value to force refetch without changing key
@@ -178,6 +178,7 @@ dedupe?: boolean // false
 dedupeMs?: number // 2000
 catchError?: boolean // true
 compare?: (prev: QueryState, next: QueryState) => boolean // shallowEqual
+intervalRedefineFetcher?: boolean // false
 ```
 
 Import `ConfigContext`, and wrap any part of your render tree with `ConfigContext.Provider`:

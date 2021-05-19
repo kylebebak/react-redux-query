@@ -113,10 +113,9 @@ function Component() {
     intervalMs: 5 * 1000,
     compare: (prev, next) => true,
     stateKeys: ['fetchMs'],
-    intervalRedefineFetcher: false,
   })
 
-  // Assign this outside of fetcher so we can see that fetcher is redefined on each interval call with default intervalRedefineFetcher=true
+  // Assign this outside of fetcher so we can see that fetcher is redefined on each interval call with intervalRedefineFetcher=true
   const now = Date.now()
   // This poll causes two rerenders each time fetcher is called (one when request is sent, one when request completes)
   const { data: pollRes, dataMs: pollResMs, inFlight: pollInFlight } = useQuery(
@@ -126,10 +125,11 @@ function Component() {
       return { ...res, queryData: res.type === 'success' ? res : null }
     },
     {
-      intervalMs: timePassed ? undefined : 1000,
+      intervalMs: timePassed ? undefined : 2000,
       stateKeys: ['inFlight', 'error'],
       refetchKey: clickTs,
       updater: (_, newData) => newData,
+      intervalRedefineFetcher: true,
     },
   )
 
@@ -159,7 +159,7 @@ function Component() {
 const App = () => {
   return (
     <Provider store={store}>
-      <ConfigContext.Provider value={{ branchName: 'customBranchName' }}>
+      <ConfigContext.Provider value={{ branchName: 'customBranchName', intervalRedefineFetcher: false }}>
         <Component />
       </ConfigContext.Provider>
     </Provider>

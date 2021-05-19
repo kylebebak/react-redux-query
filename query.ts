@@ -14,6 +14,7 @@ export const ConfigContext = createContext<{
   dedupeMs?: number
   catchError?: boolean
   compare?: (prev: QueryState<any>, next: QueryState<any>) => boolean
+  intervalRedefineFetcher?: boolean
 }>({})
 
 export interface QueryBranch<D extends {} = any> {
@@ -179,7 +180,7 @@ export async function query<R extends QueryResponse<{}>>(
  * @param options.intervalMs - Interval between end of fetcher call and next
  *   fetcher call
  * @param options.intervalRedefineFetcher - If true, fetcher is redefined each
- *   time it's called on interval, by forcing component to rerender (true by
+ *   time it's called on interval, by forcing component to rerender (false by
  *   default)
  * @param options.noRefetch - If true, don't refetch if there's already data at
  *   key
@@ -219,7 +220,7 @@ export function useQuery<K extends StateKey[] = [], D = any>(
     stateKeys,
     compare,
     intervalMs = 0,
-    intervalRedefineFetcher = true,
+    intervalRedefineFetcher,
     noRefetch = false,
     noRefetchMs = 0,
     refetchKey,
@@ -231,6 +232,7 @@ export function useQuery<K extends StateKey[] = [], D = any>(
 
   const [intervalId, setIntervalId] = useState(0)
   const intervalTimeoutIdRef = useRef<number>()
+  const redefineFetcher = intervalRedefineFetcher ?? config.intervalRedefineFetcher ?? false
 
   const queryState = useQueryState<K, D>(key, { stateKeys, compare })
 
@@ -253,13 +255,13 @@ export function useQuery<K extends StateKey[] = [], D = any>(
 
       // Force this effect to run again after intervalMs; "pseudo-recursive" call means call stack doesn't grow
       intervalTimeoutIdRef.current = window.setTimeout(() => {
-        if (intervalRedefineFetcher) setIntervalId((id) => id + 1)
+        if (redefineFetcher) setIntervalId((id) => id + 1)
         else doQuery()
       }, intervalMs)
     }
 
     doQuery()
-  }, [key, intervalMs, intervalRedefineFetcher, refetchKey, intervalId]) // eslint-disable-line
+  }, [key, intervalMs, redefineFetcher, refetchKey, intervalId]) // eslint-disable-line
 
   // Also clear interval when component unmounts
   useEffect(() => {
