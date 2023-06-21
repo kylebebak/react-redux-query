@@ -21,7 +21,7 @@ export interface QueryBranch<D extends {} = any> {
   [key: string]: QueryState<D> | undefined
 }
 
-export type PartialQueryState<K extends StateKey[], D> = Pick<QueryState<D>, 'data' | 'dataMs' | K[number]>
+export type PartialQueryState<K extends StateKey[], D extends {}> = Pick<QueryState<D>, 'data' | 'dataMs' | K[number]>
 
 export type QueryState<D extends {} = any> = {
   data?: D
@@ -43,7 +43,7 @@ export interface QueryOptions<D> {
   catchError?: boolean
 }
 
-export interface QueryStateOptions<K extends StateKey[], D> {
+export interface QueryStateOptions<K extends StateKey[], D extends {}> {
   stateKeys?: K
   compare?: (prev: PartialQueryState<K, D>, next: PartialQueryState<K, D>) => boolean
 }
@@ -143,7 +143,12 @@ export async function query<R extends QueryResponse<{}>>(
         dispatch(update({ key, updater, newData: data }))
       })
     } else {
-      dispatch(updateQueryState({ key, state: { data: { ...data }, dataMs: afterMs, inFlight } }))
+      dispatch(
+        updateQueryState({
+          key,
+          state: { data: { ...data }, dataMs: afterMs, inFlight },
+        }),
+      )
     }
   }
 
@@ -154,7 +159,12 @@ export async function query<R extends QueryResponse<{}>>(
       saveData(queryData)
     } else {
       // If response.queryData is set but is null or undefined, save response as error
-      dispatch(updateQueryState({ key, state: { error: { ...response } as {}, errorMs: afterMs, inFlight } }))
+      dispatch(
+        updateQueryState({
+          key,
+          state: { error: { ...response } as {}, errorMs: afterMs, inFlight },
+        }),
+      )
     }
   } else if (response !== null && response !== undefined) {
     // If saveData.queryData isn't set, only save response if it's neither null nor undefined
@@ -204,7 +214,7 @@ export async function query<R extends QueryResponse<{}>>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQuery<K extends StateKey[] = [], D = any>(
+export function useQuery<K extends StateKey[] = [], D extends {} = any>(
   key: string | null | undefined,
   fetcher: (() => Promise<QueryResponse<D>>) | null | undefined,
   options: QueryOptions<D> &
@@ -250,7 +260,12 @@ export function useQuery<K extends StateKey[] = [], D = any>(
     if (key === null || key === undefined || !fetcher) return
 
     const doQuery = async () => {
-      await query(key, fetcher, { ...config, ...rest, updater: updater as QueryOptions<any>['updater'], dispatch })
+      await query(key, fetcher, {
+        ...config,
+        ...rest,
+        updater: updater as QueryOptions<any>['updater'],
+        dispatch,
+      })
       if (intervalMs <= 0) return
 
       // Force this effect to run again after intervalMs; "pseudo-recursive" call means call stack doesn't grow
@@ -289,7 +304,7 @@ export function useQuery<K extends StateKey[] = [], D = any>(
  *
  * @returns Query state at key, with subset of properties specified by stateKeys
  */
-export function useQueryState<K extends StateKey[] = [], D = any>(
+export function useQueryState<K extends StateKey[] = [], D extends {} = any>(
   key: string | null | undefined,
   options: QueryStateOptions<K, D> = {},
 ) {
@@ -307,8 +322,10 @@ export function useQueryState<K extends StateKey[] = [], D = any>(
 
     partialQueryState.data = queryState.data
     partialQueryState.dataMs = queryState.dataMs
-    // @ts-ignore
-    for (const stateKey of stateKeys) partialQueryState[stateKey] = queryState[stateKey]
+    for (const stateKey of stateKeys) {
+      // @ts-ignore
+      partialQueryState[stateKey] = queryState[stateKey]
+    }
     return partialQueryState
   }, options.compare || (configCompare as QueryStateOptions<K, D>['compare']) || shallowEqual)
 }

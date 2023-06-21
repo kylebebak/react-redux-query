@@ -7,7 +7,13 @@ import { save, update } from './actions'
 import reduce from './reducer'
 
 test('save reducer', async (t) => {
-  const newState = reduce({}, { type: 'REACT_REDUX_QUERY_SAVE_DATA', payload: { key: 'res', data: { data: true } } })
+  const newState = reduce(
+    {},
+    {
+      type: 'REACT_REDUX_QUERY_SAVE_DATA',
+      payload: { key: 'res', data: { data: true } },
+    },
+  )
 
   t.is(newState.res?.data?.data, true)
 })
@@ -15,7 +21,10 @@ test('save reducer', async (t) => {
 test('save action creator', async (t) => {
   const action = save({ key: 'res', data: {} })
 
-  t.deepEqual(action, { type: 'REACT_REDUX_QUERY_SAVE_DATA', payload: { key: 'res', data: {} } })
+  t.deepEqual(action, {
+    type: 'REACT_REDUX_QUERY_SAVE_DATA',
+    payload: { key: 'res', data: {} },
+  })
 })
 
 test('update reducer', async (t) => {
