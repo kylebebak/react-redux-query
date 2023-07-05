@@ -13,7 +13,7 @@ test.js
 *.js
 *.d.ts
 
-!prettierrc.js
+!.prettierrc.js
 
 # production
 /build
