@@ -82,7 +82,7 @@ const App = () => {
 }
 ```
 
->The default name of the RRQ branch in your Redux state tree is `'query'`. [See below](#custom-config-context) for how to use a custom branch name.
+> The default name of the RRQ branch in your Redux state tree is `'query'`. [See below](#custom-config-context) for how to use a custom branch name.
 
 ### Polling
 
@@ -110,7 +110,7 @@ const handleSaveUser = async (userId) => {
 }
 ```
 
->Because it's not a hook, the `query` function also lets you use RRQ in class components. After you throw data into Redux, you can read it out of the query branch and pass it to your components in `mapStateToProps`.
+> Because it's not a hook, the `query` function also lets you use RRQ in class components. After you throw data into Redux, you can read it out of the query branch and pass it to your components in `mapStateToProps`.
 
 The `options` object must contain a `dispatch` property with the Redux dispatch function (this is used to throw data into Redux). Feel free to write a wrapper around `query` that passes in `dispatch` for you if you don't want to pass it every time.
 
@@ -122,11 +122,7 @@ It takes a `key` and an `options` object (it omits the `fetcher`). It [connects 
 
 You can pass an array of additional keys (`'error'`, `'errorMs'`, `'fetchMs'`, `'inFlight'`) to subscribe to changes in these properties as well.
 
-To control whether your component rerenders when query state changes, you can
-pass in a custom equality comparator using `options.compare`. This function
-takes previous query state and next query state as args. If it returns false,
-your connected component rerenders, else it doesn't. It uses `shallowEqual` by
-default, which means any change in `data` triggers a rerender.
+To control whether your component rerenders when query state changes, you can pass in a custom equality comparator using `options.compare`. This function takes previous query state and next query state as args. If it returns false, your connected component rerenders, else it doesn't. It uses `shallowEqual` by default, which means any change in `data` triggers a rerender.
 
 ### Redux actions
 
@@ -162,7 +158,7 @@ const handleSaveUser = async (userId, body) => {
 - `noRefetchMs`: If noRefetch is true, noRefetch behavior active for this many ms (forever by default)
 - `refetchKey`: Pass in new value to force refetch without changing key
 - `updater`: If passed, this function takes data currently at key, plus data in response, and returns updated data to be saved at key
-- `saveStaleResponse`: If true, save response even if it's "stale": `fetchMs` < `queryState.fetchMs` (false by default)
+- `saveStaleResponse`: If true, save response even if it's "stale", i.e. request's `fetchMonoMs` < `queryState.goodfetchMonoMs` (false by default)
 - `dedupe`: If true, don't call fetcher if another request was recently sent for key
 - `dedupeMs`: If dedupe is true, dedupe behavior active for this many ms (2000 by default)
 - `catchError`: If true, any error thrown by fetcher is caught and assigned to queryState.error property (true by default)
@@ -216,9 +212,9 @@ Why not SWR or React Query?
 
 - RRQ uses Redux for data persistence and automatic updates; performant, community-standard solution for managing application state; easy to modify and subscribe to stored data, and easy to extend RRQ's read/write behavior by writing your own hooks/selectors/actions
 - `queryData` property makes it easy to transform fetcher response before caching it, or instruct RRQ not to cache data at all, without changing shape of response or making it null
-- first class TypeScript support; RRQ is written in TypeScript, and argument/return types are seamlessly inferred from fetcher return types
-- not only hooks; `query` function means RRQ can be used outside of lifecycle methods, or in class components
-- small and simple codebase; RRQ weighs less than 3kb minzipped
+- First class TypeScript support; RRQ is written in TypeScript, and argument/return types are seamlessly inferred from fetcher return types
+- Not only hooks; `query` function means RRQ can be used outside of lifecycle methods, or in class components
+- Small and simple codebase; RRQ weighs less than 3kb minzipped
 
 ## Dependencies
 

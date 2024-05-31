@@ -48,6 +48,7 @@ export function update<D extends {} = any>(payload: Update<D>): Action {
 export interface UpdateQueryState {
   key: string
   state: Partial<QueryState>
+  options?: { saveStaleResponse?: boolean }
 }
 /**
  * Action updates query state. key is usually unique per URL path, and should probably be similar to URL path.
@@ -57,6 +58,7 @@ export interface UpdateQueryState {
  * @param payload - Payload object
  * @param payload.key - Key in query branch at which to save query state
  * @param payload.state - Query state object
+ * @param payload.options - Update options
  *
  * @returns Redux action object
  */

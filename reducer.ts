@@ -46,7 +46,12 @@ export default function reduce(state: QueryBranch = {}, action: Action): QueryBr
     }
 
     case 'REACT_REDUX_QUERY_UPDATE_QUERY_STATE': {
-      const { key, state: queryState } = action.payload
+      const { key, state: queryState, options } = action.payload
+
+      const saveStaleResponse = options?.saveStaleResponse || false
+      if (!saveStaleResponse && queryState.goodFetchMonoMs !== undefined) {
+        if (queryState.goodFetchMonoMs < (state[key]?.goodFetchMonoMs || 0)) return state
+      }
 
       return {
         ...state,

@@ -5,11 +5,12 @@ import { Dispatch } from 'redux'
 import { update, updateQueryState } from './actions'
 
 const fetchStateByKey: {
-  [key: string]: { fetchMs: number; inFlight: { id: string; fetchMs: number }[] } | undefined
+  [key: string]: { fetchMonoMs: number; inFlight: { id: string; fetchMonoMs: number }[] } | undefined
 } = {}
 
 export const ConfigContext = createContext<{
   branchName?: string
+  saveStaleResponse?: boolean
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
@@ -29,7 +30,8 @@ export type QueryState<D extends {} = any> = {
   error?: {}
   errorMs?: number
   fetchMs?: number
-  inFlight?: { id: string; fetchMs: number }[]
+  goodFetchMonoMs?: number
+  inFlight?: { id: string; fetchMonoMs: number }[]
 }
 
 export type StateKey = Exclude<keyof QueryState, 'data' | 'dataMs'>
@@ -41,6 +43,7 @@ export interface QueryOptions<D> {
   dedupe?: boolean
   dedupeMs?: number
   catchError?: boolean
+  saveStaleResponse?: boolean
 }
 
 export interface QueryStateOptions<K extends StateKey[], D extends {}> {
@@ -63,6 +66,7 @@ export interface QueryStateOptions<K extends StateKey[], D extends {}> {
  * @param options.dispatch - Dispatch function to send data to store (required)
  * @param options.updater - If passed, this function takes data currently at key, plus data in response, and returns
  *  updated data to be saved at key
+ * @param options.saveStaleResponse - If true, save response even if it's "stale" (false by default)
  * @param options.dedupe - If true, don't call fetcher if another request was recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught and assigned to queryState.error property
@@ -77,14 +81,15 @@ export async function query<R extends QueryResponse<{}>>(
     dispatch: Dispatch
   },
 ) {
-  const { dispatch, updater, dedupe = false, dedupeMs = 2000, catchError = true } = options
+  const { dispatch, updater, dedupe = false, dedupeMs = 2000, catchError = true, saveStaleResponse = false } = options
 
-  // Bail out if dedupe is true and another request was recently sent for key
-  const beforeMs = Date.now()
+  const fetchMs = Date.now()
+  const fetchMonoMs = Math.round(performance.now())
+
   const fetchStateBefore = fetchStateByKey[key]
-  if (dedupe && fetchStateBefore && beforeMs - fetchStateBefore.fetchMs <= dedupeMs) return
+  // Bail out if dedupe is true and another request was recently sent for key
+  if (dedupe && fetchStateBefore && fetchMonoMs - fetchStateBefore.fetchMonoMs <= dedupeMs) return
 
-  const fetchMs = beforeMs
   // Create shallow copy of inFlight array so === comparison returns false
   const inFlightBefore = [...(fetchStateBefore?.inFlight || [])]
 
@@ -92,9 +97,9 @@ export async function query<R extends QueryResponse<{}>>(
   let counter = 0
   let requestId = ''
   while (true) {
-    const id = `${fetchMs}-${counter}`
+    const id = `${fetchMonoMs}-${counter}`
     if (!inFlightBefore.find((data) => data.id === id)) {
-      inFlightBefore.push({ id, fetchMs })
+      inFlightBefore.push({ id, fetchMonoMs })
       requestId = id
       break
     }
@@ -102,7 +107,7 @@ export async function query<R extends QueryResponse<{}>>(
   }
 
   // Notify client that fetcher will be called
-  fetchStateByKey[key] = { fetchMs, inFlight: inFlightBefore }
+  fetchStateByKey[key] = { fetchMonoMs, inFlight: inFlightBefore }
   dispatch(updateQueryState({ key, state: { fetchMs, inFlight: inFlightBefore } }))
 
   // Call fetcher
@@ -119,7 +124,7 @@ export async function query<R extends QueryResponse<{}>>(
   const fetchState = fetchStateByKey[key]
   // Call filter to remove completed request; filter also ensures === comparison returns false with old inFlight array
   const inFlight = (fetchState?.inFlight || []).filter((data) => data.id !== requestId)
-  fetchStateByKey[key] = { fetchMs: fetchState?.fetchMs || fetchMs, inFlight }
+  fetchStateByKey[key] = { fetchMonoMs: fetchState?.fetchMonoMs || fetchMonoMs, inFlight }
 
   // If error was thrown, notify client and bail out
   if (error) {
@@ -132,7 +137,13 @@ export async function query<R extends QueryResponse<{}>>(
     if (updater) {
       // Results in only one rerender, not two: https://react-redux.js.org/api/batch#batch
       batch(() => {
-        dispatch(updateQueryState({ key, state: { dataMs: afterMs, inFlight } }))
+        dispatch(
+          updateQueryState({
+            key,
+            state: { dataMs: afterMs, goodFetchMonoMs: fetchMonoMs, inFlight },
+            options: { saveStaleResponse },
+          }),
+        )
         // @ts-ignore; newData property only for internal use, including it in Update interface would just be confusing
         dispatch(update({ key, updater, newData: data }))
       })
@@ -140,7 +151,8 @@ export async function query<R extends QueryResponse<{}>>(
       dispatch(
         updateQueryState({
           key,
-          state: { data: { ...data }, dataMs: afterMs, inFlight },
+          state: { data: { ...data }, dataMs: afterMs, goodFetchMonoMs: fetchMonoMs, inFlight },
+          options: { saveStaleResponse },
         }),
       )
     }
@@ -169,8 +181,8 @@ export async function query<R extends QueryResponse<{}>>(
 }
 
 /**
- * Hook calls fetcher and saves data to query branch at key. Immediately returns query state (including data and dataMs)
- * at key, and subscribes to changes in this query state.
+ * Hook calls fetcher and saves data to query branch at key. Immediately returns query state (including data, dataMs,
+ * dataMonoMs) at key, and subscribes to changes in this query state.
  *
  * Data is only refetched if key, intervalMs, or refetchKey changes; passing in a new fetcher function alone doesn't
  * refetch data.
@@ -187,6 +199,7 @@ export async function query<R extends QueryResponse<{}>>(
  * @param options.refetchKey - Pass in new value to force refetch without changing key
  * @param options.updater - If passed, this function takes data currently at key, plus data in response, and returns
  *  updated data to be saved at key
+ * @param options.saveStaleResponse - If true, save response even if it's "stale" (false by default)
  * @param options.dedupe - If true, don't call fetcher if another request was recently sent for key
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught and assigned to queryState.error property
