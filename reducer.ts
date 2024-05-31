@@ -2,14 +2,12 @@ import { Action, Update } from './actions'
 import { QueryBranch, QueryOptions } from './query'
 
 /**
- * Reduces state in query branch of Redux state tree depending on action
- * dispatched. Query branch stores query states. Key is usually unique per
- * fetcher URL path, and should be similar to URL path.
+ * Reduces state in query branch of Redux state tree depending on action dispatched. Query branch stores query states.
+ * Key is usually unique per fetcher URL path, and should be similar to URL path.
  *
- * This allows any component to subscribe to changes to query state for any
- * fetcher, including metadata and errors. It also allows components to render
- * themselves immediately if the data they need has already been cached in the
- * query branch.
+ * This allows any component to subscribe to changes to query state for any fetcher, including metadata and errors. It
+ * also allows components to render themselves immediately if the data they need has already been cached in the query
+ * branch.
  *
  * @param state - Query branch
  * @param action - Action object

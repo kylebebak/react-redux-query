@@ -5,8 +5,7 @@ export interface Save {
   data: {}
 }
 /**
- * Action stores fetcher data. key is usually unique per URL path, and should
- * probably be similar to URL path.
+ * Action stores fetcher data. key is usually unique per URL path, and should probably be similar to URL path.
  *
  * @param payload - Payload object
  * @param payload.key - Key in query branch at which to save data
@@ -26,18 +25,16 @@ export interface Update<D> {
   updater: (data: D | undefined) => D | undefined | null
 }
 /**
- * Like save, but takes an updater function, which receives the data at key and
- * must return updated data, undefined, or null.
+ * Like save, but takes an updater function, which receives the data at key and must return updated data, undefined, or
+ * null.
  *
  * - If updater returns undefined, don't modify data at key
  * - If updater returns null, remove query state at key from query branch
  *
  * @param payload - Payload object
  * @param payload.key - Key in query branch at which to save data
- * @param payload.updater - Function that receives data at key and must return
- *   updated data, undefined, or null
- * @param payload.newData - If this is passed, updater receives this as second
- *   argument
+ * @param payload.updater - Function that receives data at key and must return updated data, undefined, or null
+ * @param payload.newData - If this is passed, updater receives this as second argument
  *
  * @returns Redux action object
  */
@@ -53,11 +50,9 @@ export interface UpdateQueryState {
   state: Partial<QueryState>
 }
 /**
- * Action updates query state. key is usually unique per URL path, and should
- * probably be similar to URL path.
+ * Action updates query state. key is usually unique per URL path, and should probably be similar to URL path.
  *
- * This is meant for internal use; query state contains query metadata that
- * client code should probably not update.
+ * This is meant for internal use; query state contains query metadata that client code should probably not update.
  *
  * @param payload - Payload object
  * @param payload.key - Key in query branch at which to save query state
