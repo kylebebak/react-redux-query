@@ -162,6 +162,7 @@ const handleSaveUser = async (userId, body) => {
 - `noRefetchMs`: If noRefetch is true, noRefetch behavior active for this many ms (forever by default)
 - `refetchKey`: Pass in new value to force refetch without changing key
 - `updater`: If passed, this function takes data currently at key, plus data in response, and returns updated data to be saved at key
+- `saveStaleResponse`: If true, save response even if it's "stale": `fetchMs` < `queryState.fetchMs` (false by default)
 - `dedupe`: If true, don't call fetcher if another request was recently sent for key
 - `dedupeMs`: If dedupe is true, dedupe behavior active for this many ms (2000 by default)
 - `catchError`: If true, any error thrown by fetcher is caught and assigned to queryState.error property (true by default)
@@ -176,6 +177,7 @@ RRQ's default behavior can be configured using `ConfigContext`, which has the fo
 branchName?: string // 'query'
 dedupe?: boolean // false
 dedupeMs?: number // 2000
+saveStaleResponse?: boolean // false
 catchError?: boolean // true
 compare?: (prev: QueryState, next: QueryState) => boolean // shallowEqual
 intervalRedefineFetcher?: boolean // false
