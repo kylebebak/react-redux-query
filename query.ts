@@ -141,7 +141,6 @@ export async function query<R extends QueryResponse<{}>>(
           updateQueryState({
             key,
             state: { dataMs: afterMs, goodFetchMonoMs: fetchMonoMs, inFlight },
-            options: { saveStaleResponse },
           }),
         )
         // @ts-ignore; newData property only for internal use, including it in Update interface would just be confusing
