@@ -67,7 +67,7 @@ export interface QueryStateOptions<K extends StateKey[], D extends {}> {
  * @param options.updater - If passed, this function takes data currently at key, plus data in response, and returns
  *  updated data to be saved at key
  * @param options.saveStaleResponse - If true, save response even if it's "stale" (false by default)
- * @param options.dedupe - If true, don't call fetcher if another request was recently sent for key
+ * @param options.dedupe - If true, don't call fetcher if another request was recently sent for key (false by default)
  * @param options.dedupeMs - If dedupe is true, dedupe behavior active for this many ms (2000 by default)
  * @param options.catchError - If true, any error thrown by fetcher is caught and assigned to queryState.error property
  *  (true by default)
