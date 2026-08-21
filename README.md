@@ -222,8 +222,8 @@ React and Redux.
 
 ## Development and tests
 
-Clone the repo, then `yarn`, then `yarn test`. This runs tests on the vanilla JS parts of RRQ, but none of the React code.
+Clone the repo, then `npm install`, then `npm test`. This runs tests on the vanilla JS parts of RRQ, but none of the React code.
 
-To test the React code, run `cd test_app`, then `yarn`.
+To test the React code, run `cd test_app`, then `npm install`.
 
-Then run `yarn start` or `yarn test` to run React test app or to run tests on test app.
+Then run `npm run dev` or `npm test` to run the React test app or to run tests on the test app.

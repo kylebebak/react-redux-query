@@ -2,40 +2,35 @@
   "name": "test",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^7.1.2",
-    "@types/jest": "^24.0.0",
-    "@types/node": "^12.0.0",
-    "@types/react": "^16.9.0",
-    "@types/react-dom": "^16.9.0",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-redux": "^7.2.1",
-    "react-scripts": "4.0.1",
-    "request-dot-js": "^3.2.2",
-    "typescript": "^4.0.3"
+    "request-dot-js": "^3.2.2"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@types/node": "^26.2.0",
+    "@types/react": "^16.9.0",
+    "@types/react-dom": "^16.9.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "jsdom": "^30.0.1",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   },
   "scripts": {
-    "prepare": "mkdir -p src/rrq && cp ../{query.ts,actions.ts,reducer.ts} src/rrq",
-    "start": "yarn prepare && TSC_COMPILE_ON_ERROR=true FAST_REFRESH=false react-scripts start",
-    "test": "yarn prepare && react-scripts test",
-    "build": "yarn prepare && react-scripts build"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "prepare": "mkdir -p src/rrq && cp ../query.ts ../actions.ts ../reducer.ts src/rrq",
+    "dev": "npm run prepare && vite",
+    "build": "npm run prepare && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "npm run prepare && vitest run",
+    "lint": "oxlint src",
+    "format": "oxfmt src",
+    "format-check": "oxfmt --check src"
   }
 }

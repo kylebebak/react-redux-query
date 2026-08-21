@@ -1,0 +1,16 @@
+{
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-unused-vars": ["error", { "ignoreRestSiblings": true }]
+  },
+  "env": {
+    "builtin": true
+  }
+}

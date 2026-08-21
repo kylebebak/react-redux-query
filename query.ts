@@ -77,7 +77,7 @@ export interface QueryStateOptions<K extends StateKey[], D extends {}> {
 export async function query<R extends QueryResponse<{}>>(
   key: string,
   fetcher: () => Promise<R>,
-  options: QueryOptions<R extends { queryData: null | undefined | infer D } ? D : NonNullable<R>> & {
+  options: QueryOptions<R extends { queryData: null | undefined | (infer D) } ? D : NonNullable<R>> & {
     dispatch: Dispatch
   },
 ) {
@@ -272,7 +272,7 @@ export function useQuery<K extends StateKey[] = [], D extends {} = any>(
     }
 
     doQuery()
-  }, [key, intervalMs, redefineFetcher, refetchKey, intervalId]) // eslint-disable-line
+  }, [key, intervalMs, redefineFetcher, refetchKey, intervalId])
 
   // Also clear interval when component unmounts
   useEffect(() => {
@@ -305,21 +305,24 @@ export function useQueryState<K extends StateKey[] = [], D extends {} = any>(
   // K before D in useQueryState signature, because K can be inferred, while D can't
   const { branchName = 'query', compare: configCompare } = useContext(ConfigContext)
 
-  return useSelector((state: { query: QueryBranch<D> }) => {
-    const stateKeys = (options.stateKeys || []) as K
-    // Return type picks QueryState properties specified in options.stateKeys, in addition to data and dataMs
-    const partialQueryState = {} as PartialQueryState<K, D>
+  return useSelector(
+    (state: { query: QueryBranch<D> }) => {
+      const stateKeys = (options.stateKeys || []) as K
+      // Return type picks QueryState properties specified in options.stateKeys, in addition to data and dataMs
+      const partialQueryState = {} as PartialQueryState<K, D>
 
-    if (!key) return partialQueryState
-    const queryState = state[branchName as 'query'][key]
-    if (!queryState) return partialQueryState
+      if (!key) return partialQueryState
+      const queryState = state[branchName as 'query'][key]
+      if (!queryState) return partialQueryState
 
-    partialQueryState.data = queryState.data
-    partialQueryState.dataMs = queryState.dataMs
-    for (const stateKey of stateKeys) {
-      // @ts-ignore
-      partialQueryState[stateKey] = queryState[stateKey]
-    }
-    return partialQueryState
-  }, options.compare || (configCompare as QueryStateOptions<K, D>['compare']) || shallowEqual)
+      partialQueryState.data = queryState.data
+      partialQueryState.dataMs = queryState.dataMs
+      for (const stateKey of stateKeys) {
+        // @ts-ignore
+        partialQueryState[stateKey] = queryState[stateKey]
+      }
+      return partialQueryState
+    },
+    options.compare || (configCompare as QueryStateOptions<K, D>['compare']) || shallowEqual,
+  )
 }
